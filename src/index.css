@@ -1,0 +1,342 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  
+  --color-source: #10b981;
+  --color-source-light: #d1fae5;
+  --color-source-dark: #065f46;
+  
+  --color-transform: #3b82f6;
+  --color-transform-light: #dbeafe;
+  --color-transform-dark: #1e40af;
+  
+  --color-destination: #8b5cf6;
+  --color-destination-light: #ede9fe;
+  --color-destination-dark: #5b21b6;
+  
+  --color-control: #f59e0b;
+  --color-control-light: #fef3c7;
+  --color-control-dark: #92400e;
+  
+  --color-orchestration: #6b7280;
+  --color-orchestration-light: #f3f4f6;
+  --color-orchestration-dark: #374151;
+  
+  --color-canvas-dot: #e2e8f0;
+  --color-canvas-bg: #fafbfc;
+}
+
+/* Dark mode theme overrides */
+.dark {
+  --color-canvas-dot: #334155;
+  --color-canvas-bg: #0f172a;
+}
+
+/* ========== Base ========== */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  margin: 0;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ========== Canvas ========== */
+.react-flow__node {
+  font-family: var(--font-sans);
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+/* Canvas dot-grid background */
+.canvas-bg {
+  background-color: var(--color-canvas-bg);
+  background-image: radial-gradient(circle, var(--color-canvas-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ========== Node Styles ========== */
+.pipeline-node {
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0;
+  min-width: 220px;
+  max-width: 280px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  overflow: visible;
+}
+
+.dark .pipeline-node {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.pipeline-node:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #cbd5e1;
+}
+
+.dark .pipeline-node:hover {
+  border-color: #475569;
+}
+
+.pipeline-node.selected {
+  box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+}
+
+.pipeline-node.source { border-left: 3.5px solid var(--color-source); }
+.pipeline-node.transform { border-left: 3.5px solid var(--color-transform); }
+.pipeline-node.destination { border-left: 3.5px solid var(--color-destination); }
+.pipeline-node.control { border-left: 3.5px solid var(--color-control); }
+.pipeline-node.orchestration { border-left: 3.5px solid var(--color-orchestration); }
+.pipeline-node.note {
+  border-left: 3.5px solid #fbbf24;
+  background: #fffbeb;
+  min-width: 180px;
+}
+.dark .pipeline-node.note {
+  background: #451a03;
+}
+
+/* Node run states */
+.pipeline-node.running {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.1);
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+.pipeline-node.success {
+  border-color: #10b981;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2);
+}
+
+.pipeline-node.failed {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2), 0 0 12px rgba(239, 68, 68, 0.1);
+}
+
+.pipeline-node.disabled {
+  opacity: 0.5;
+  filter: grayscale(0.3);
+}
+
+/* ========== Edge animations ========== */
+.react-flow__edge-path {
+  stroke: #94a3b8;
+  stroke-width: 1.5;
+  transition: stroke 0.4s ease, stroke-width 0.3s ease;
+}
+
+.dark .react-flow__edge-path {
+  stroke: #475569;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #3b82f6;
+  stroke-width: 2.5;
+}
+
+/* Animated dash flow for running edges */
+.edge-dash-flow {
+  animation: dash-flow 0.6s linear infinite;
+}
+
+/* Glow effects for active/error edges */
+.edge-glow-active {
+  animation: edge-glow-pulse 1.5s ease-in-out infinite;
+}
+
+.edge-glow-failed {
+  animation: edge-glow-failed-pulse 0.8s ease-in-out infinite;
+}
+
+/* ========== Handle styles ========== */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #94a3b8;
+  background: white;
+  transition: all 0.15s ease;
+}
+
+.dark .react-flow__handle {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.react-flow__handle:hover {
+  border-color: #3b82f6;
+  background: #dbeafe;
+  transform: scale(1.3);
+}
+
+.react-flow__handle-connecting {
+  border-color: #3b82f6;
+  background: #3b82f6;
+}
+
+/* ========== Animations ========== */
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); }
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -12; }
+}
+
+@keyframes edge-glow-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes edge-glow-failed-pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-in-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progress-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.animate-slide-in-right { animation: slide-in-right 0.25s ease-out; }
+.animate-slide-in-up { animation: slide-in-up 0.2s ease-out; }
+.animate-fade-in { animation: fade-in 0.15s ease-out; }
+.animate-spin-slow { animation: spin 1.5s linear infinite; }
+.animate-progress-pulse { animation: progress-pulse 1.5s ease-in-out infinite; }
+
+/* ========== Misc ========== */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Drag preview */
+.dragging-node {
+  opacity: 0.7;
+  cursor: grabbing;
+}
+
+/* Context menu */
+.context-menu {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  min-width: 180px;
+  z-index: 1000;
+}
+
+.dark .context-menu {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #475569;
+  transition: background 0.1s;
+}
+
+.dark .context-menu-item {
+  color: #cbd5e1;
+}
+
+.context-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.dark .context-menu-item:hover {
+  background: #334155;
+}
+
+.context-menu-item.danger {
+  color: #ef4444;
+}
+
+.context-menu-item.danger:hover {
+  background: #fef2f2;
+}
+
+.dark .context-menu-item.danger:hover {
+  background: #450a0a;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 4px 0;
+}
+
+.dark .context-menu-divider {
+  background: #334155;
+}
