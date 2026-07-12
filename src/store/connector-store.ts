@@ -39,7 +39,7 @@ export const useConnectorStore = create<ConnectorState>()((set, get) => ({
       pipelinesUsing: 5,
       config: { host: 'db.prod.internal' }
     }
-  ],
+  ] as any[],
   
   addInstance: (instance) => {
     const id = uuidv4();
@@ -48,7 +48,7 @@ export const useConnectorStore = create<ConnectorState>()((set, get) => ({
       id,
       createdAt: new Date().toISOString(),
       health: 'healthy',
-      pipelinesUsing: 0
+      pipelinesUsing: []
     };
     set(state => ({ instances: [...state.instances, newInstance] }));
     return id;
@@ -62,7 +62,7 @@ export const useConnectorStore = create<ConnectorState>()((set, get) => ({
     instances: state.instances.filter(i => i.id !== id)
   })),
   
-  testConnection: async (instanceId) => {
+  testConnection: async (_instanceId) => {
     return new Promise(resolve => {
       setTimeout(() => {
         resolve(Math.random() > 0.1);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -10,10 +10,8 @@ import {
   LogOut,
   User,
   Settings,
-  X,
   CheckCircle2,
   AlertCircle,
-  GitBranch,
   MessageSquare,
   Info,
 } from 'lucide-react';

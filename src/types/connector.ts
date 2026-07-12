@@ -38,15 +38,16 @@ export interface ConnectorDefinition {
 
 export interface ConnectorInstance {
   id: string;
-  definitionId: string;
+  definitionId?: string;
+  connectorId?: string;
   name: string;
   config: Record<string, string>;
   health: ConnectionHealth;
   lastTested?: string;
   lastUsed?: string;
   createdAt: string;
-  createdBy: string;
-  pipelinesUsing: string[];
+  createdBy?: string;
+  pipelinesUsing: string[] | number;
   schema?: ConnectorSchema;
 }
 

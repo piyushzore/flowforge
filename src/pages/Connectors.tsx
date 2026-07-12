@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useConnectorStore } from '../store/connector-store';
-import { Search, Plus, Database, Cloud, Table, Settings, Trash2, Power } from 'lucide-react';
+import { Search, Plus, Settings, Trash2 } from 'lucide-react';
 
 export default function Connectors() {
   const { instances, definitions } = useConnectorStore();
@@ -37,7 +37,7 @@ export default function Connectors() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredInstances.map(instance => {
-          const def = definitions.find(d => d.id === instance.connectorId);
+          const def = definitions.find(d => d.id === (instance as any).connectorId);
           if (!def) return null;
           
           return (

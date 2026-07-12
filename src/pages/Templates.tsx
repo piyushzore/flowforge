@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, BookTemplate, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { Search, ArrowRight } from 'lucide-react';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useNavigate } from 'react-router-dom';
 

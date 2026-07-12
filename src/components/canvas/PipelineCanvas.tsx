@@ -205,18 +205,18 @@ function CanvasInner({
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={handleNodesChange}
-        onEdgesChange={handleEdgesChange}
+        nodes={nodes as any}
+        edges={edges as any}
+        onNodesChange={handleNodesChange as any}
+        onEdgesChange={handleEdgesChange as any}
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onDrop={onDrop}
         onDragOver={onDragOver}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        isValidConnection={isValidConnection}
+        nodeTypes={nodeTypes as any}
+        edgeTypes={edgeTypes as any}
+        isValidConnection={isValidConnection as any}
         defaultEdgeOptions={{
           type: 'animated',
           animated: false,
@@ -243,17 +243,17 @@ function CanvasInner({
         />
         <MiniMap
           position="bottom-right"
-          nodeColor={(node) => {
-            const category = (node.data as PipelineNodeData)?.category;
-            switch (category) {
-              case 'source': return '#10b981';
-              case 'transform': return '#3b82f6';
-              case 'destination': return '#8b5cf6';
-              case 'control': return '#f59e0b';
-              case 'orchestration': return '#6b7280';
-              default: return '#e2e8f0';
-            }
-          }}
+  nodeColor={(node: any) => {
+    const category = (node.data as PipelineNodeData)?.category;
+    switch (category) {
+      case 'source': return '#10b981';
+      case 'transform': return '#3b82f6';
+      case 'destination': return '#8b5cf6';
+      case 'control': return '#f59e0b';
+      case 'orchestration': return '#6b7280';
+      default: return '#e2e8f0';
+    }
+  }}
           maskColor="rgba(0,0,0,0.08)"
           className="!bg-white/80 dark:!bg-slate-900/80 !border-slate-200 dark:!border-slate-700 !rounded-lg"
         />

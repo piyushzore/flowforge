@@ -1,8 +1,8 @@
 import React from 'react';
 import {
-  Activity, Zap, Timer, Layers, AlertTriangle,
+  Activity, Timer, Layers, AlertTriangle,
   CheckCircle2, XCircle, Radio, BarChart3, Gauge,
-  ArrowDownUp, Server, Cpu
+  Server, Cpu
 } from 'lucide-react';
 import { usePipelineStore, type ProcessingMode } from '../../store/pipeline-store';
 

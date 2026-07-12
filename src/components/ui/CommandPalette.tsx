@@ -5,7 +5,6 @@ import {
   GitBranch,
   Plug,
   FileText,
-  Zap,
   Plus,
   LayoutTemplate,
   Activity,
@@ -215,7 +214,7 @@ export function CommandPalette() {
     );
 
     return items;
-  }, [pipelines, connectorInstances, darkMode, navigate, close, toggleDarkMode]);
+  }, [pipelines, connectorInstances, darkMode, navigate, close, toggleTheme]);
 
   // ── Filtered items ──────────────────────────────────────────────────────────
 

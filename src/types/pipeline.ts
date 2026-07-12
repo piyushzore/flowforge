@@ -63,6 +63,7 @@ export interface ValidationRule {
 }
 
 export interface PipelineNodeData {
+  [key: string]: unknown;
   label: string;
   description?: string;
   category: NodeCategory;
@@ -134,7 +135,7 @@ export interface NodeComment {
 }
 
 export type PipelineNode = Node<PipelineNodeData>;
-export type PipelineEdge = Edge;
+export type PipelineEdge = Edge<Record<string, unknown>>;
 
 export type PipelineStatus = 'draft' | 'active' | 'paused' | 'error';
 

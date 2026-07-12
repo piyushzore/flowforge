@@ -11,7 +11,7 @@ import {
   Calendar, Globe, FileInput, Play, StickyNote,
   CheckCircle2, XCircle, Loader2, AlertCircle,
 } from 'lucide-react';
-import type { PipelineNodeData, NodeCategory } from '../../types/pipeline';
+import type { PipelineNodeData, NodeCategory } from '../../../types/pipeline';
 
 // Icon mapping for node sub-types
 const nodeIcons: Record<string, React.ReactNode> = {
@@ -107,9 +107,9 @@ const statusIcons: Record<string, React.ReactNode> = {
   queued: <Clock size={14} className="text-slate-400 animate-progress-pulse" />,
 };
 
-function PipelineNodeComponent({ data, selected }: NodeProps<PipelineNodeData>) {
+function PipelineNodeComponent({ data, selected }: NodeProps<any>) {
   const category = data.category || 'transform';
-  const colors = categoryColors[category];
+  const colors = categoryColors[category as NodeCategory] || categoryColors.transform;
   const icon = nodeIcons[data.subType] || <Layers size={16} />;
   const statusIcon = data.runStatus && data.runStatus !== 'idle' ? statusIcons[data.runStatus] : null;
   const isNote = category === 'note';
@@ -211,9 +211,9 @@ function PipelineNodeComponent({ data, selected }: NodeProps<PipelineNodeData>) 
                 </tr>
               </thead>
               <tbody>
-                {data.previewData.slice(0, 2).map((row, i) => (
+                {data.previewData.slice(0, 2).map((row: any, i: number) => (
                   <tr key={i} className="border-t border-slate-50 dark:border-slate-800">
-                    {Object.values(row).slice(0, 3).map((val, j) => (
+                    {Object.values(row).slice(0, 3).map((val: any, j: number) => (
                       <td key={j} className="px-1.5 py-0.5 text-slate-600 dark:text-slate-400 truncate max-w-[60px]">
                         {String(val)}
                       </td>

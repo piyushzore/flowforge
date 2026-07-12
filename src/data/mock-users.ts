@@ -1,4 +1,4 @@
-import type { User, Workspace, Notification, AuditEntry } from '../types/common';
+import type { User, Workspace, Notification } from '../types/common';
 
 export const currentUser: User = {
   id: 'u-1',

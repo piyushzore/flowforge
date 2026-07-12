@@ -1,6 +1,5 @@
-import React from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { Calendar, Plus, Play, Pause, MoreVertical } from 'lucide-react';
+import { Calendar, Plus, MoreVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Schedules() {

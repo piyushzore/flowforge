@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { Search, Filter, Calendar, Play, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Search, Filter, Calendar, Play, CheckCircle2, XCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function Monitoring() {

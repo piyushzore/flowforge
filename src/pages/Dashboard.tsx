@@ -1,4 +1,3 @@
-import React from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useConnectorStore } from '../store/connector-store';
 import { Activity, GitBranch, Plug, Play, CheckCircle2, XCircle, Clock } from 'lucide-react';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useConnectorStore } from '../store/connector-store';
 import { Search, Info, Plus } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export default function ConnectorGallery() {
       name: `New ${defId} Connection`,
       connectorId: defId,
       config: {}
-    });
+    } as any);
     alert('Connector instance added!');
   };
 

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { Search, Filter, Plus, MoreVertical, GitBranch, Play, Pause, Copy, Trash2, Clock } from 'lucide-react';
+import { Search, Filter, Plus, GitBranch, Play, Pause, Copy, Trash2, Clock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
