@@ -15,6 +15,7 @@ import {
   type Connection,
   type OnNodesChange,
   type OnEdgesChange,
+  ConnectionLineType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -217,6 +218,7 @@ function CanvasInner({
         nodeTypes={nodeTypes as any}
         edgeTypes={edgeTypes as any}
         isValidConnection={isValidConnection as any}
+        connectionLineType={ConnectionLineType.SmoothStep}
         defaultEdgeOptions={{
           type: 'animated',
           animated: false,
