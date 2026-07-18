@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   X, Upload, Database, Globe, Cloud, Bot, HelpCircle,
   AlertCircle, CheckCircle2, RefreshCw, Layers, ShieldCheck, Check
@@ -48,6 +48,9 @@ export default function ConnectDataModal() {
   // Inline Transformations
   const [filterQuery, setFilterQuery] = useState('');
   const [limitCount, setLimitCount] = useState('1000');
+
+  // useRef MUST be called before any conditional returns (React Rules of Hooks)
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen || !node) return null;
 
@@ -158,9 +161,9 @@ export default function ConnectDataModal() {
     closeModal();
   };
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // fileInputRef moved above early return to comply with Rules of Hooks
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: any) => {
     const file = e.target.files?.[0];
     if (file) {
       setFileName(file.name);
