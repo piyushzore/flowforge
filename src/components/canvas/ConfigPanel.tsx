@@ -119,7 +119,51 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
     }
   };
 
-  const previewDataToRender = (nodeData.previewData as any[]) || [];
+  let previewDataToRender = (nodeData.previewData as any[]) || [];
+
+  if (previewDataToRender.length === 0 && pipeline) {
+    const incomingEdges = pipeline.edges.filter(e => e.target === nodeId);
+    if (incomingEdges.length > 0) {
+      let sourceData: any[] = [];
+      incomingEdges.forEach(incomingEdge => {
+        const sourceNode = pipeline.nodes.find(n => n.id === incomingEdge.source);
+        if (sourceNode && sourceNode.data.previewData && Array.isArray(sourceNode.data.previewData)) {
+          if (sourceData.length === 0) sourceData = sourceNode.data.previewData;
+        }
+      });
+      
+      if (nodeData.subType === 'filter' && nodeData.conditions && nodeData.conditions.length > 0) {
+        previewDataToRender = sourceData.filter(row => {
+          let result = true;
+          (nodeData.conditions as FilterCondition[]).forEach((cond, idx) => {
+            if (!cond.field || !cond.operator || !cond.value) return;
+            const val = row[cond.field];
+            const cmpVal = isNaN(Number(cond.value)) ? cond.value : Number(cond.value);
+            const rowVal = typeof val === 'number' && !isNaN(Number(cmpVal)) ? Number(val) : String(val);
+            
+            let condResult = false;
+            switch(cond.operator) {
+              case 'equals': condResult = rowVal == cmpVal; break;
+              case 'not-equals': condResult = rowVal != cmpVal; break;
+              case 'greater-than': condResult = Number(rowVal) > Number(cmpVal); break;
+              case 'less-than': condResult = Number(rowVal) < Number(cmpVal); break;
+              case 'contains': condResult = String(rowVal).includes(String(cmpVal)); break;
+              default: condResult = true;
+            }
+            if (idx === 0) {
+              result = condResult;
+            } else {
+              if (cond.logic === 'OR') result = result || condResult;
+              else result = result && condResult;
+            }
+          });
+          return result;
+        });
+      } else {
+        previewDataToRender = sourceData;
+      }
+    }
+  }
 
   return (
     <div className="w-[420px] bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full animate-slide-in-right">
@@ -200,9 +244,28 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Output Preview</h4>
-              <span className="text-[11px] text-slate-500">
-                {previewDataToRender.length} rows × {Object.keys(previewDataToRender[0] || {}).length} columns
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-slate-500">
+                  {previewDataToRender.length} rows × {Object.keys(previewDataToRender[0] || {}).length} columns
+                </span>
+                <button 
+                  onClick={() => {
+                    if (previewDataToRender.length === 0) return;
+                    const headers = Object.keys(previewDataToRender[0]).join(',');
+                    const csvRows = previewDataToRender.map(row => Object.values(row).join(','));
+                    const csvString = [headers, ...csvRows].join('\n');
+                    const blob = new Blob([csvString], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${nodeData.label}-export.csv`;
+                    a.click();
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors"
+                >
+                  <FileSpreadsheet size={12} /> Export CSV
+                </button>
+              </div>
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
