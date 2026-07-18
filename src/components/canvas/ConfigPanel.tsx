@@ -39,6 +39,7 @@ import {
   Play,
 } from 'lucide-react';
 import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
+import { usePipelineStore } from '../../store/pipeline-store';
 
 interface ConfigPanelProps {
   nodeId: string;
@@ -51,35 +52,63 @@ interface ConfigPanelProps {
 export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onClose }: ConfigPanelProps) {
   const [activeTab, setActiveTab] = useState<'configure' | 'preview' | 'advanced'>('configure');
 
-  // Sample fields for demo
-  const sampleFields: FieldSchema[] = [
-    { name: 'id', type: 'number' },
-    { name: 'name', type: 'string' },
-    { name: 'email', type: 'string' },
-    { name: 'company', type: 'string' },
-    { name: 'plan', type: 'string' },
-    { name: 'mrr', type: 'number' },
-    { name: 'signup_date', type: 'date' },
-    { name: 'status', type: 'string' },
-    { name: 'country', type: 'string' },
-  ];
+  const activePipelineId = usePipelineStore(s => s.activePipelineId);
+  const pipeline = usePipelineStore(s => s.pipelines.find(p => p.id === activePipelineId));
+
+  // Determine actual fields based on node connections and previewData
+  let dynamicFields: FieldSchema[] = [];
+  if (pipeline) {
+    if (nodeData.previewData && Array.isArray(nodeData.previewData) && nodeData.previewData.length > 0) {
+      const firstRow = nodeData.previewData[0] as Record<string, any>;
+      dynamicFields = Object.keys(firstRow).map(key => {
+        const val = firstRow[key];
+        let type: 'string' | 'number' | 'boolean' | 'date' | 'json' = 'string';
+        if (typeof val === 'number') type = 'number';
+        else if (typeof val === 'boolean') type = 'boolean';
+        else if (typeof val === 'object') type = 'json';
+        return { name: key, type };
+      });
+    } else {
+      // Look for ALL incoming edges to infer schema from the source nodes
+      const incomingEdges = pipeline.edges.filter(e => e.target === nodeId);
+      const allKeys = new Set<string>();
+      
+      incomingEdges.forEach(incomingEdge => {
+        const sourceNode = pipeline.nodes.find(n => n.id === incomingEdge.source);
+        if (sourceNode && sourceNode.data.previewData && Array.isArray(sourceNode.data.previewData) && sourceNode.data.previewData.length > 0) {
+          const firstRow = sourceNode.data.previewData[0] as Record<string, any>;
+          Object.keys(firstRow).forEach(key => {
+            if (!allKeys.has(key)) {
+              allKeys.add(key);
+              const val = firstRow[key];
+              let type: 'string' | 'number' | 'boolean' | 'date' | 'json' = 'string';
+              if (typeof val === 'number') type = 'number';
+              else if (typeof val === 'boolean') type = 'boolean';
+              else if (typeof val === 'object') type = 'json';
+              dynamicFields.push({ name: key, type });
+            }
+          });
+        }
+      });
+    }
+  }
 
   const renderConfigContent = () => {
     switch (nodeData.subType) {
       case 'filter':
-        return <FilterConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <FilterConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'rename':
-        return <RenameConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <RenameConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'change-type':
-        return <ChangeTypeConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <ChangeTypeConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'join':
-        return <JoinConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <JoinConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'group-by':
-        return <GroupByConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <GroupByConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'sort':
-        return <SortConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <SortConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'deduplicate':
-        return <DeduplicateConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={sampleFields} />;
+        return <DeduplicateConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'schedule':
         return <ScheduleConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
       default:
@@ -90,13 +119,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
     }
   };
 
-  const samplePreviewData = [
-    { id: 1, name: 'Acme Corp', email: 'contact@acme.com', plan: 'Enterprise', mrr: 2500 },
-    { id: 2, name: 'TechStart', email: 'hello@techstart.io', plan: 'Growth', mrr: 800 },
-    { id: 3, name: 'DataFlow', email: 'info@dataflow.co', plan: 'Starter', mrr: 150 },
-    { id: 4, name: 'CloudNine', email: 'team@cloudnine.dev', plan: 'Growth', mrr: 1200 },
-    { id: 5, name: 'NetPrime', email: 'ops@netprime.com', plan: 'Enterprise', mrr: 3800 },
-  ];
+  const previewDataToRender = (nodeData.previewData as any[]) || [];
 
   return (
     <div className="w-[420px] bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full animate-slide-in-right">
@@ -178,7 +201,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Output Preview</h4>
               <span className="text-[11px] text-slate-500">
-                {(nodeData.previewData as any[] || samplePreviewData).length} rows × {Object.keys((nodeData.previewData as any[] || samplePreviewData)[0] || {}).length} columns
+                {previewDataToRender.length} rows × {Object.keys(previewDataToRender[0] || {}).length} columns
               </span>
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
@@ -186,7 +209,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-900">
-                      {Object.keys((nodeData.previewData as any[] || samplePreviewData)[0] || {}).map((key) => (
+                      {Object.keys(previewDataToRender[0] || {}).map((key) => (
                         <th key={key} className="px-3 py-2 text-left font-medium text-slate-500 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap">
                           {key}
                         </th>
@@ -194,7 +217,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
                     </tr>
                   </thead>
                   <tbody>
-                    {(nodeData.previewData as any[] || samplePreviewData).map((row: any, i: number) => (
+                    {previewDataToRender.map((row: any, i: number) => (
                       <tr key={i} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
                         {Object.values(row).map((val: any, j: number) => (
                           <td key={j} className="px-3 py-1.5 text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-[200px] truncate">
