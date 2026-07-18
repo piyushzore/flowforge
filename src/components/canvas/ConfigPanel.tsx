@@ -38,7 +38,7 @@ import {
   Webhook,
   Play,
 } from 'lucide-react';
-import type { PipelineNodeData, FieldSchema, FilterCondition } from '../../types/pipeline';
+import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
 
 interface ConfigPanelProps {
   nodeId: string;
@@ -277,7 +277,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
 
 function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
   const conditions: FilterCondition[] = nodeData.conditions || [
-    { id: '1', field: 'status', operator: 'equals', value: 'active', logic: 'AND' },
+    { id: '1', field: '', operator: 'equals', value: '', logic: 'AND' },
   ];
 
   const operators = [
@@ -429,6 +429,12 @@ function ChangeTypeConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pip
 }
 
 function JoinConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
+  const joinConfig = nodeData.joinConfig || { joinType: 'inner', leftField: '', rightField: '' };
+
+  const updateJoin = (updates: Partial<JoinConfig>) => {
+    onUpdate({ joinConfig: { ...joinConfig, ...updates } as JoinConfig });
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -437,8 +443,9 @@ function JoinConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineN
           {(['inner', 'left', 'right', 'full'] as const).map((type) => (
             <button
               key={type}
+              onClick={() => updateJoin({ joinType: type })}
               className={`py-1.5 text-[11px] rounded-lg font-medium transition-colors ${
-                (nodeData.joinConfig?.joinType || 'inner') === type
+                joinConfig.joinType === type
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700'
                   : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-slate-300'
               }`}
@@ -451,12 +458,20 @@ function JoinConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineN
       <div>
         <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Match Fields</label>
         <div className="flex gap-2 items-center">
-          <select className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+          <select 
+            value={joinConfig.leftField}
+            onChange={(e) => updateJoin({ leftField: e.target.value })}
+            className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+          >
             <option value="">Left field...</option>
             {fields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
           </select>
           <span className="text-slate-400">=</span>
-          <select className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+          <select 
+            value={joinConfig.rightField}
+            onChange={(e) => updateJoin({ rightField: e.target.value })}
+            className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+          >
             <option value="">Right field...</option>
             {fields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
           </select>
@@ -468,6 +483,27 @@ function JoinConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineN
 
 function GroupByConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
   const aggFunctions = ['sum', 'avg', 'count', 'min', 'max', 'count-distinct'];
+  const groupByFields = nodeData.groupByFields || [];
+  const aggregates = nodeData.aggregates || [];
+
+  const toggleGroup = (field: string) => {
+    if (groupByFields.includes(field)) {
+      onUpdate({ groupByFields: groupByFields.filter(f => f !== field) });
+    } else {
+      onUpdate({ groupByFields: [...groupByFields, field] });
+    }
+  };
+
+  const updateAgg = (field: string, fn: string) => {
+    const existing = aggregates.find(a => a.field === field);
+    if (existing) {
+      if (!fn) onUpdate({ aggregates: aggregates.filter(a => a.field !== field) });
+      else onUpdate({ aggregates: aggregates.map(a => a.field === field ? { ...a, function: fn as any } : a) });
+    } else {
+      if (fn) onUpdate({ aggregates: [...aggregates, { field, function: fn as any }] });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -475,7 +511,12 @@ function GroupByConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipeli
         <div className="space-y-1">
           {fields.slice(0, 4).map((f) => (
             <label key={f.name} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 text-blue-600" defaultChecked={f.name === 'plan' || f.name === 'country'} />
+              <input 
+                type="checkbox" 
+                className="rounded border-slate-300 text-blue-600" 
+                checked={groupByFields.includes(f.name)}
+                onChange={() => toggleGroup(f.name)}
+              />
               <span className="text-[12px] text-slate-700 dark:text-slate-300">{f.name}</span>
             </label>
           ))}
@@ -484,14 +525,22 @@ function GroupByConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipeli
       <div>
         <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Aggregations</label>
         <div className="space-y-2">
-          {fields.filter(f => f.type === 'number').map((f) => (
-            <div key={f.name} className="flex items-center gap-2">
-              <span className="flex-1 text-[12px] text-slate-600 dark:text-slate-400">{f.name}</span>
-              <select className="w-32 text-[12px] px-2 py-1 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-                {aggFunctions.map((fn) => <option key={fn} value={fn}>{fn}</option>)}
-              </select>
-            </div>
-          ))}
+          {fields.filter(f => f.type === 'number').map((f) => {
+            const currentAgg = aggregates.find(a => a.field === f.name)?.function || '';
+            return (
+              <div key={f.name} className="flex items-center gap-2">
+                <span className="flex-1 text-[12px] text-slate-600 dark:text-slate-400">{f.name}</span>
+                <select 
+                  value={currentAgg}
+                  onChange={(e) => updateAgg(f.name, e.target.value)}
+                  className="w-32 text-[12px] px-2 py-1 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                >
+                  <option value="">None</option>
+                  {aggFunctions.map((fn) => <option key={fn} value={fn}>{fn}</option>)}
+                </select>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -499,20 +548,45 @@ function GroupByConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipeli
 }
 
 function SortConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
+  const sortRules = (nodeData.sortRules as any[]) || [];
+  
+  const addSortRule = () => {
+    onUpdate({ sortRules: [...sortRules, { field: '', order: 'asc' }] });
+  };
+  const updateSortRule = (idx: number, updates: any) => {
+    const newRules = [...sortRules];
+    newRules[idx] = { ...newRules[idx], ...updates };
+    onUpdate({ sortRules: newRules });
+  };
+  const removeSortRule = (idx: number) => {
+    onUpdate({ sortRules: sortRules.filter((_, i) => i !== idx) });
+  };
+
   return (
     <div className="space-y-3">
       <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">Sort Rules</label>
-      <div className="flex gap-2 items-center">
-        <select className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-          {fields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
-        </select>
-        <select className="w-24 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-        <button className="p-1 hover:bg-red-50 dark:hover:bg-red-950/30 rounded text-red-400"><X size={12} /></button>
-      </div>
-      <button className="w-full py-1.5 text-[12px] text-blue-600 border border-dashed border-blue-300 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors">
+      {sortRules.map((rule, idx) => (
+        <div key={idx} className="flex gap-2 items-center">
+          <select 
+            value={rule.field}
+            onChange={(e) => updateSortRule(idx, { field: e.target.value })}
+            className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+          >
+            <option value="">Select field...</option>
+            {fields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+          </select>
+          <select 
+            value={rule.order}
+            onChange={(e) => updateSortRule(idx, { order: e.target.value })}
+            className="w-24 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </select>
+          <button onClick={() => removeSortRule(idx)} className="p-1 hover:bg-red-50 dark:hover:bg-red-950/30 rounded text-red-400"><X size={12} /></button>
+        </div>
+      ))}
+      <button onClick={addSortRule} className="w-full py-1.5 text-[12px] text-blue-600 border border-dashed border-blue-300 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors">
         + Add sort rule
       </button>
     </div>
@@ -520,6 +594,17 @@ function SortConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineN
 }
 
 function DeduplicateConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
+  const dedupKeys = (nodeData.dedupKeys as string[]) || [];
+  const dedupKeep = (nodeData.dedupKeep as string) || 'first';
+
+  const toggleKey = (field: string) => {
+    if (dedupKeys.includes(field)) {
+      onUpdate({ dedupKeys: dedupKeys.filter(f => f !== field) });
+    } else {
+      onUpdate({ dedupKeys: [...dedupKeys, field] });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -527,7 +612,12 @@ function DeduplicateConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pi
         <div className="space-y-1">
           {fields.map((f) => (
             <label key={f.name} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 text-blue-600" defaultChecked={f.name === 'email'} />
+              <input 
+                type="checkbox" 
+                checked={dedupKeys.includes(f.name)}
+                onChange={() => toggleKey(f.name)}
+                className="rounded border-slate-300 text-blue-600" 
+              />
               <span className="text-[12px] text-slate-700 dark:text-slate-300">{f.name}</span>
             </label>
           ))}
@@ -536,8 +626,14 @@ function DeduplicateConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pi
       <div>
         <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Keep</label>
         <div className="flex gap-2">
-          <button className="flex-1 py-1.5 text-[12px] rounded-lg font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700">First</button>
-          <button className="flex-1 py-1.5 text-[12px] rounded-lg font-medium bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Last</button>
+          <button 
+            onClick={() => onUpdate({ dedupKeep: 'first' })}
+            className={`flex-1 py-1.5 text-[12px] rounded-lg font-medium ${dedupKeep === 'first' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}
+          >First</button>
+          <button 
+            onClick={() => onUpdate({ dedupKeep: 'last' })}
+            className={`flex-1 py-1.5 text-[12px] rounded-lg font-medium ${dedupKeep === 'last' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}
+          >Last</button>
         </div>
       </div>
     </div>
