@@ -774,7 +774,11 @@ import { useUIStore } from '../../store/ui-store';
 
 function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: string; nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void }) {
   const isSource = nodeData.category === 'source';
+  const isDestination = nodeData.category === 'destination';
   const openModal = useUIStore(s => s.openModal);
+
+  const activePipelineId = usePipelineStore(s => s.activePipelineId);
+  const pipeline = usePipelineStore(s => s.pipelines.find(p => p.id === activePipelineId));
 
   const handleOpenConnect = () => {
     openModal('connect-data', {
@@ -783,6 +787,33 @@ function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: strin
       category: nodeData.category,
       subType: nodeData.subType
     });
+  };
+
+  const handleExportCSV = () => {
+    if (!pipeline) return;
+    
+    const incomingEdges = pipeline.edges.filter(e => e.target === nodeId);
+    if (incomingEdges.length === 0) return;
+    
+    let sourceData: any[] = [];
+    incomingEdges.forEach(incomingEdge => {
+      const sourceNode = pipeline.nodes.find(n => n.id === incomingEdge.source);
+      if (sourceNode && sourceNode.data.previewData && Array.isArray(sourceNode.data.previewData)) {
+        if (sourceData.length === 0) sourceData = sourceNode.data.previewData;
+      }
+    });
+    
+    if (sourceData.length === 0) return;
+    
+    const headers = Object.keys(sourceData[0]).join(',');
+    const csvRows = sourceData.map(row => Object.values(row).join(','));
+    const csvString = [headers, ...csvRows].join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${nodeData.label}-export.csv`;
+    a.click();
   };
 
   return (
@@ -832,6 +863,17 @@ function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: strin
               Replace
             </button>
           </div>
+          
+          {isDestination && (
+            <div className="pt-2 border-t border-emerald-100 dark:border-emerald-900">
+              <button
+                onClick={handleExportCSV}
+                className="w-full py-1.5 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
+              >
+                <FileSpreadsheet size={12} /> Export Final CSV
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
