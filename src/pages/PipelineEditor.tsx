@@ -37,7 +37,8 @@ export default function PipelineEditor() {
     processingMode,
     setProcessingMode,
     saveStatus,
-    setSaveStatus
+    setSaveStatus,
+    savePipeline
   } = usePipelineStore();
 
   const {
@@ -49,16 +50,17 @@ export default function PipelineEditor() {
 
   const pipeline = getActivePipeline();
 
-  // Simulated auto-save
+  // Auto-save
   useEffect(() => {
-    if (saveStatus === 'unsaved') {
-      const timer = setTimeout(() => {
+    if (saveStatus === 'unsaved' && pipeline) {
+      const timer = setTimeout(async () => {
         setSaveStatus('saving');
-        setTimeout(() => setSaveStatus('saved'), 800);
+        await savePipeline(pipeline.id);
+        setSaveStatus('saved');
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [saveStatus, setSaveStatus]);
+  }, [saveStatus, setSaveStatus, savePipeline, pipeline?.id]);
 
   if (!pipeline) {
     return (

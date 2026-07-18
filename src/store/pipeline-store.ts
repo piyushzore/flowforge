@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import type { Pipeline, PipelineNode, PipelineEdge, PipelineNodeData, PipelineRun } from '../types/pipeline';
 import { mockPipelines } from '../data/mock-pipelines';
 import { mockRuns } from '../data/mock-runs';
@@ -70,6 +71,9 @@ interface PipelineState {
   
   saveStatus: 'saved' | 'saving' | 'unsaved';
   setSaveStatus: (s: 'saved' | 'saving' | 'unsaved') => void;
+  
+  savePipeline: (id: string) => Promise<void>;
+  loadAllPipelines: () => Promise<void>;
 }
 
 // ─── Helper: topological sort ───────────────────────────────────────────
@@ -142,10 +146,19 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     return id;
   },
   
-  deletePipeline: (id) => set(state => ({
-    pipelines: state.pipelines.filter(p => p.id !== id),
-    activePipelineId: state.activePipelineId === id ? null : state.activePipelineId
-  })),
+  deletePipeline: (id) => {
+    set(state => ({
+      pipelines: state.pipelines.filter(p => p.id !== id),
+      activePipelineId: state.activePipelineId === id ? null : state.activePipelineId
+    }));
+    idbDel(`pipeline-${id}`).then(() => {
+      idbGet<string[]>('pipeline-index').then(index => {
+        if (index) {
+          idbSet('pipeline-index', index.filter(i => i !== id));
+        }
+      });
+    }).catch(console.error);
+  },
   
   updatePipeline: (id, updates) => set(state => ({
     pipelines: state.pipelines.map(p => p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p)
@@ -531,5 +544,39 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   },
   
   saveStatus: 'saved',
-  setSaveStatus: (s) => set({ saveStatus: s })
+  setSaveStatus: (s) => set({ saveStatus: s }),
+
+  savePipeline: async (id) => {
+    const pipeline = get().pipelines.find(p => p.id === id);
+    if (!pipeline) return;
+    try {
+      await idbSet(`pipeline-${id}`, pipeline);
+      
+      const index = (await idbGet<string[]>('pipeline-index')) || [];
+      if (!index.includes(id)) {
+        await idbSet('pipeline-index', [...index, id]);
+      }
+    } catch (e) {
+      console.error('Failed to save pipeline', e);
+    }
+  },
+  
+  loadAllPipelines: async () => {
+    try {
+      const index = (await idbGet<string[]>('pipeline-index')) || [];
+      if (index.length === 0) return;
+      
+      const loadedPipelines: Pipeline[] = [];
+      for (const id of index) {
+        const p = await idbGet<Pipeline>(`pipeline-${id}`);
+        if (p) loadedPipelines.push(p);
+      }
+      
+      if (loadedPipelines.length > 0) {
+        set({ pipelines: loadedPipelines, activePipelineId: loadedPipelines[0].id });
+      }
+    } catch (e) {
+      console.error('Failed to load pipelines', e);
+    }
+  }
 }));

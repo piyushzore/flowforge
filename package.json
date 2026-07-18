@@ -13,6 +13,7 @@
     "@xyflow/react": "^12.11.2",
     "dagre": "^0.8.5",
     "date-fns": "^4.4.0",
+    "idb-keyval": "^6.3.0",
     "lucide-react": "^1.24.0",
     "mysql2": "^3.23.0",
     "papaparse": "^5.5.4",

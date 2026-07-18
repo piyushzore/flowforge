@@ -29,6 +29,12 @@ function PipelineEditorWrapper() {
 }
 
 function App() {
+  const loadAllPipelines = usePipelineStore(s => s.loadAllPipelines);
+  
+  React.useEffect(() => {
+    loadAllPipelines();
+  }, [loadAllPipelines]);
+
   return (
     <BrowserRouter>
       <Routes>
