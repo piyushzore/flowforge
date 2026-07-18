@@ -33,6 +33,21 @@ interface PipelineCanvasProps {
   isRunning?: boolean;
 }
 
+// Custom connection line to bypass internal React Flow bug
+const CustomConnectionLine = ({ fromX, fromY, toX, toY }: any) => {
+  return (
+    <g>
+      <path
+        fill="none"
+        stroke="#94a3b8"
+        strokeWidth={2}
+        strokeDasharray="5,5"
+        d={`M${fromX},${fromY} L${toX},${toY}`}
+      />
+    </g>
+  );
+};
+
 function CanvasInner({
   nodes,
   edges,
@@ -219,6 +234,7 @@ function CanvasInner({
         edgeTypes={edgeTypes as any}
         isValidConnection={isValidConnection as any}
         connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineComponent={CustomConnectionLine}
         defaultEdgeOptions={{
           type: 'animated',
           animated: false,
