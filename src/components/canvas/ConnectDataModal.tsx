@@ -3,6 +3,7 @@ import {
   X, Upload, Database, Globe, Cloud, Bot, HelpCircle,
   AlertCircle, CheckCircle2, RefreshCw, Layers, ShieldCheck, Check
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { useUIStore } from '../../store/ui-store';
 import { usePipelineStore } from '../../store/pipeline-store';
 
@@ -28,6 +29,7 @@ export default function ConnectDataModal() {
 
   // Form states
   const [fileName, setFileName] = useState('');
+  const [dbType, setDbType] = useState('postgres');
   const [dbName, setDbName] = useState('production_db');
   const [dbHost, setDbHost] = useState('localhost');
   const [dbPort, setDbPort] = useState('5432');
@@ -54,73 +56,107 @@ export default function ConnectDataModal() {
 
   if (!isOpen || !node) return null;
 
-  const handleTestConnection = () => {
+  const handleTestConnection = async () => {
     setTesting(true);
     setTestResult(null);
     setErrorMessage('');
     
-    setTimeout(() => {
-      setTesting(false);
-      
-      // Basic validation check
-      if (activeSourceGroup === 'db' && (!dbHost || !dbUsername || !dbPassword)) {
+    if (activeSourceGroup === 'file') {
+       setTesting(false);
+       if (previewRows) setTestResult('success');
+       else setTestResult('error');
+       return;
+    }
+
+    if (activeSourceGroup === 'db') {
+      if (!dbHost || !dbUsername || !dbPassword || !dbTable) {
+        setTesting(false);
         setTestResult('error');
-        setErrorMessage('CONNECTION_FAILED: Could not connect to server. Check host, username, and password.');
+        setErrorMessage('CONNECTION_FAILED: Missing required fields.');
         return;
       }
-      if (activeSourceGroup === 'api' && !apiUrl) {
+      try {
+        const res = await fetch('/api/preview-db', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: dbType, host: dbHost, port: dbPort, user: dbUsername, password: dbPassword, database: dbName, table: dbTable })
+        });
+        const data = await res.json();
+        setTesting(false);
+        if (!res.ok) {
+          setTestResult('error');
+          setErrorMessage(`DB Error: ${data.error}`);
+        } else {
+          setTestResult('success');
+          setPreviewRows(data.rows);
+          setSchemaFields(data.schema);
+          setRowCount(data.rows.length);
+        }
+      } catch (err) {
+        setTesting(false);
+        setTestResult('error');
+        setErrorMessage(`Network Error: ${(err as Error).message}`);
+      }
+      return;
+    }
+
+    if (activeSourceGroup === 'api') {
+      if (!apiUrl) {
+        setTesting(false);
         setTestResult('error');
         setErrorMessage('INVALID_CONFIG: Missing required field: Base URL');
         return;
       }
-      if (activeSourceGroup === 'cloud' && !cloudBucket) {
+      try {
+        let headers = {};
+        if (apiHeaders) {
+           try {
+             headers = apiHeaders.includes('{') ? JSON.parse(apiHeaders) : { 'Content-Type': 'application/json' };
+           } catch(e) {}
+        }
+        
+        const res = await fetch(apiUrl, { method: apiMethod, headers });
+        setTesting(false);
+        if (!res.ok) {
+          setTestResult('error');
+          setErrorMessage(`API Error: ${res.status} ${res.statusText}`);
+          return;
+        }
+        const data = await res.json();
+        
+        let rows = Array.isArray(data) ? data : (data.data ? data.data : [data]);
+        if (rows.length === 0) {
+           setTestResult('error');
+           setErrorMessage('API returned empty array');
+           return;
+        }
+        const keys = Object.keys(rows[0]);
+        setSchemaFields(keys.map(k => ({ name: k, type: inferType(rows[0][k]) })));
+        setPreviewRows(rows.slice(0, 100));
+        setRowCount(rows.length);
+        setTestResult('success');
+      } catch(err) {
+        setTesting(false);
         setTestResult('error');
-        setErrorMessage('AUTH_FAILED: Invalid credentials. Lacks access permission to this container.');
-        return;
+        setErrorMessage(`CORS or Network Error: ${(err as Error).message}. API must support CORS.`);
       }
-      
+      return;
+    }
+
+    setTimeout(() => {
+      setTesting(false);
       setTestResult('success');
-      
-      // Populate mock preview based on selected type
-      if (activeSourceGroup === 'file') {
-        setRowCount(1250);
-        setSchemaFields([
-          { name: 'id', type: 'Integer' },
-          { name: 'name', type: 'String' },
-          { name: 'email', type: 'String' },
-          { name: 'status', type: 'String' }
-        ]);
-        setPreviewRows([
-          { id: 1, name: 'Alice Smith', email: 'alice@example.com', status: 'Active' },
-          { id: 2, name: 'Bob Jones', email: 'bob@example.com', status: 'Pending' },
-          { id: 3, name: 'Charlie Brown', email: 'charlie@example.com', status: 'Inactive' }
-        ]);
-      } else if (activeSourceGroup === 'db') {
-        setRowCount(5000);
-        setSchemaFields([
-          { name: 'id', type: 'Integer' },
-          { name: 'name', type: 'String' },
-          { name: 'email', type: 'String' },
-          { name: 'salary', type: 'Decimal' }
-        ]);
-        setPreviewRows([
-          { id: 101, name: 'Marcus Rivera', email: 'marcus@flowforge.dev', salary: 125000.00 },
-          { id: 102, name: 'Sarah Chen', email: 'sarah@flowforge.dev', salary: 145000.00 },
-          { id: 103, name: 'Alex Chen', email: 'alex@flowforge.dev', salary: 110000.00 }
-        ]);
-      } else {
-        setRowCount(350);
-        setSchemaFields([
-          { name: 'id', type: 'String' },
-          { name: 'created_at', type: 'Timestamp' },
-          { name: 'payload', type: 'JSON' }
-        ]);
-        setPreviewRows([
-          { id: 'evt_9281a', created_at: '2026-07-18T10:00:00Z', payload: '{"event":"signup"}' },
-          { id: 'evt_9281b', created_at: '2026-07-18T10:05:00Z', payload: '{"event":"checkout"}' }
-        ]);
-      }
-    }, 1200);
+      setRowCount(350);
+      setSchemaFields([
+        { name: 'id', type: 'String' },
+        { name: 'created_at', type: 'Timestamp' },
+        { name: 'payload', type: 'JSON' }
+      ]);
+      setPreviewRows([
+        { id: 'evt_9281a', created_at: '2026-07-18T10:00:00Z', payload: '{"event":"signup"}' },
+        { id: 'evt_9281b', created_at: '2026-07-18T10:05:00Z', payload: '{"event":"checkout"}' }
+      ]);
+    }, 1000);
   };
 
   const handleConfirm = () => {
@@ -222,47 +258,42 @@ export default function ConnectDataModal() {
           setTestResult('success');
 
         } else {
-          // Parse CSV / TSV files
-          const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-          if (lines.length < 2) {
-            setTesting(false);
-            setTestResult('error');
-            setErrorMessage('File appears empty or has no data rows.');
-            return;
-          }
-
-          // Detect delimiter
-          const firstLine = lines[0];
-          const delimiter = firstLine.includes('\t') ? '\t' : 
-                           firstLine.includes(';') ? ';' : ',';
-
-          const headers = parseCsvLine(firstLine, delimiter);
-          const dataRows = lines.slice(1);
-
-          // Parse first 5 rows for preview
-          const preview = dataRows.slice(0, 5).map(line => {
-            const values = parseCsvLine(line, delimiter);
-            const row: Record<string, string | number> = {};
-            headers.forEach((h, i) => {
-              const val = values[i] || '';
-              // Try to parse as number
-              const num = Number(val);
-              row[h] = val !== '' && !isNaN(num) && val.trim() !== '' ? num : val;
-            });
-            return row;
+          // Parse CSV / TSV files with PapaParse
+          Papa.parse(file, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            preview: 100, // Just get first 100 rows for preview
+            complete: (results) => {
+              if (results.errors.length && results.data.length === 0) {
+                 setTesting(false);
+                 setTestResult('error');
+                 setErrorMessage(`CSV Error: ${results.errors[0].message}`);
+                 return;
+              }
+              const dataRows = results.data as any[];
+              if (dataRows.length === 0) {
+                setTesting(false);
+                setTestResult('error');
+                setErrorMessage('File appears empty or has no data rows.');
+                return;
+              }
+              const headers = Object.keys(dataRows[0]);
+              setSchemaFields(headers.map(h => ({
+                name: h,
+                type: inferType(dataRows[0][h])
+              })));
+              setRowCount(dataRows.length);
+              setPreviewRows(dataRows);
+              setTesting(false);
+              setTestResult('success');
+            },
+            error: (err: any) => {
+              setTesting(false);
+              setTestResult('error');
+              setErrorMessage(`Failed to parse CSV: ${err.message}`);
+            }
           });
-
-          // Infer types from first data row
-          const firstDataValues = parseCsvLine(dataRows[0], delimiter);
-          setSchemaFields(headers.map((h, i) => ({
-            name: h,
-            type: inferType(firstDataValues[i])
-          })));
-
-          setRowCount(dataRows.length);
-          setPreviewRows(preview);
-          setTesting(false);
-          setTestResult('success');
         }
       } catch (err) {
         setTesting(false);
@@ -386,7 +417,7 @@ export default function ConnectDataModal() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Database Type</label>
-                    <select className="w-full text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-transparent text-slate-700 dark:text-slate-300">
+                    <select value={dbType} onChange={e => setDbType(e.target.value)} className="w-full text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-transparent text-slate-700 dark:text-slate-300">
                       <option value="postgres">PostgreSQL</option>
                       <option value="mysql">MySQL</option>
                       <option value="mongodb">MongoDB</option>

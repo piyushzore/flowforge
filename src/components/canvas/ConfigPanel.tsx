@@ -37,6 +37,7 @@ import {
   Calendar,
   Webhook,
   Play,
+  RefreshCw,
 } from 'lucide-react';
 import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
 import { usePipelineStore } from '../../store/pipeline-store';
@@ -852,15 +853,15 @@ function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: strin
           <div className="flex gap-2 pt-1.5">
             <button
               onClick={handleOpenConnect}
-              className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-850 dark:hover:bg-slate-750 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
+              className="flex-1 py-1.5 flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
             >
-              Reconnect
+              <RefreshCw size={12} /> Refresh Data
             </button>
             <button
               onClick={handleOpenConnect}
               className="flex-1 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-[11px] font-semibold transition-all"
             >
-              Replace
+              Configure
             </button>
           </div>
           
