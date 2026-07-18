@@ -158,6 +158,55 @@ export default function ConnectDataModal() {
     closeModal();
   };
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      setTesting(true);
+      setTestResult(null);
+      setErrorMessage('');
+      
+      // Simulate auto-detection of schema and rows for the uploaded file
+      setTimeout(() => {
+        setTesting(false);
+        setTestResult('success');
+        setRowCount(Math.floor(500 + Math.random() * 2000));
+        
+        if (file.name.endsWith('.json')) {
+          setSchemaFields([
+            { name: 'user_id', type: 'String' },
+            { name: 'event_type', type: 'String' },
+            { name: 'properties', type: 'JSON' }
+          ]);
+          setPreviewRows([
+            { user_id: 'usr_01', event_type: 'page_view', properties: '{"path":"/home"}' },
+            { user_id: 'usr_02', event_type: 'purchase', properties: '{"amount":99.9}' }
+          ]);
+        } else {
+          setSchemaFields([
+            { name: 'id', type: 'Integer' },
+            { name: 'name', type: 'String' },
+            { name: 'email', type: 'String' },
+            { name: 'status', type: 'String' }
+          ]);
+          setPreviewRows([
+            { id: 1, name: 'Alice Smith', email: 'alice@example.com', status: 'Active' },
+            { id: 2, name: 'Bob Jones', email: 'bob@example.com', status: 'Pending' },
+            { id: 3, name: 'Charlie Brown', email: 'charlie@example.com', status: 'Inactive' }
+          ]);
+        }
+      }, 800);
+    }
+  };
+
+  const triggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-[920px] max-w-full max-h-[85vh] flex flex-col overflow-hidden animate-slide-in-up">
@@ -215,8 +264,15 @@ export default function ConnectDataModal() {
             {activeSourceGroup === 'file' && (
               <div className="space-y-4">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Drag and drop your file</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".csv,.json,.xlsx,.xls,.parquet,.tsv"
+                  className="hidden"
+                />
                 <div
-                  onClick={() => setFileName('customers_export.csv')}
+                  onClick={triggerFileSelect}
                   className="border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-blue-500 rounded-xl p-6 text-center cursor-pointer hover:bg-blue-50/20 transition-all flex flex-col items-center justify-center gap-2 group"
                 >
                   <Upload className="w-8 h-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
