@@ -326,8 +326,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
       // ─── BATCH MODE ───────────────────────────────────────────────
       const nodeDelay = mode === 'micro-batch' ? 900 : 1400;
       const progressInterval = 120;
-      const shouldFail = Math.random() < 0.18;  // 18% chance of failure
-      const failAtStep = shouldFail ? Math.floor(Math.random() * sortedIds.length) : -1;
 
       let stepIndex = 0;
 
@@ -363,41 +361,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
         }
 
         const nodeId = sortedIds[stepIndex];
-
-        // Check for simulated failure
-        if (stepIndex === failAtStep) {
-          get().updateNode(pipelineId, nodeId, { runStatus: 'failed', runError: 'Schema mismatch: column "revenue_q3" not found in target' });
-          // Mark downstream edges red
-          const updatedPipeline = get().pipelines.find(p => p.id === pipelineId);
-          if (updatedPipeline) {
-            get().setEdges(pipelineId, setEdgeStatus(updatedPipeline.edges, nodeId, 'failed'));
-          }
-          const elapsed = Date.now() - startTime;
-          set(state => ({
-            runStats: state.runStats ? {
-              ...state.runStats,
-              errorNodeId: nodeId,
-              errorMessage: 'Schema mismatch: column "revenue_q3" not found in target',
-              elapsedMs: elapsed,
-              nodesCompleted: stepIndex,
-            } : null
-          }));
-          get().addRun({
-            id: `r-${Date.now()}`, pipelineId, pipelineName: pipeline.name,
-            status: 'failed', trigger: 'manual',
-            startedAt: new Date(startTime).toISOString(),
-            completedAt: new Date().toISOString(),
-            duration: Math.round(elapsed / 1000),
-            rowsIn: totalRows, rowsOut: Math.round(totalRows * (stepIndex / sortedIds.length)),
-            error: 'Schema mismatch',
-            nodeResults: []
-          });
-          const t = window.setTimeout(() => {
-            set({ isRunning: false, runningPipelineId: null });
-          }, 4000);
-          timers.push(t);
-          return;
-        }
 
         // Start running this node
         get().updateNode(pipelineId, nodeId, { runStatus: 'running', runProgress: 0, rowsProcessed: 0 });
