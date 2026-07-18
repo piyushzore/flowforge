@@ -290,6 +290,23 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
     { value: 'is-not-null', label: 'Is not null' },
   ];
 
+  const updateCondition = (id: string, updates: Partial<FilterCondition>) => {
+    const newConditions = conditions.map(c => c.id === id ? { ...c, ...updates } : c);
+    onUpdate({ conditions: newConditions });
+  };
+  
+  const addCondition = () => {
+    onUpdate({
+      conditions: [...conditions, { id: String(Date.now()), field: '', operator: 'equals', value: '', logic: 'AND' }]
+    });
+  };
+
+  const removeCondition = (id: string) => {
+    onUpdate({
+      conditions: conditions.filter(c => c.id !== id)
+    });
+  };
+
   return (
     <div className="space-y-3">
       <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">Conditions</label>
@@ -297,7 +314,11 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
         <div key={cond.id}>
           {i > 0 && (
             <div className="flex justify-center my-1">
-              <select className="text-[10px] px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 border-0 font-medium">
+              <select 
+                value={cond.logic}
+                onChange={(e) => updateCondition(cond.id, { logic: e.target.value as 'AND' | 'OR' })}
+                className="text-[10px] px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 border-0 font-medium cursor-pointer"
+              >
                 <option value="AND">AND</option>
                 <option value="OR">OR</option>
               </select>
@@ -307,7 +328,7 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
             <select
               value={cond.field}
               className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
-              onChange={() => {}}
+              onChange={(e) => updateCondition(cond.id, { field: e.target.value })}
             >
               <option value="">Field...</option>
               {fields.map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
@@ -315,7 +336,7 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
             <select
               value={cond.operator}
               className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
-              onChange={() => {}}
+              onChange={(e) => updateCondition(cond.id, { operator: e.target.value as any })}
             >
               {operators.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
             </select>
@@ -323,9 +344,12 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
               value={cond.value}
               placeholder="Value"
               className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
-              onChange={() => {}}
+              onChange={(e) => updateCondition(cond.id, { value: e.target.value })}
             />
-            <button className="p-1 hover:bg-red-50 dark:hover:bg-red-950/30 rounded text-red-400 hover:text-red-600">
+            <button 
+              onClick={() => removeCondition(cond.id)}
+              className="p-1 hover:bg-red-50 dark:hover:bg-red-950/30 rounded text-red-400 hover:text-red-600"
+            >
               <X size={12} />
             </button>
           </div>
@@ -333,11 +357,11 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
       ))}
       <button
         className="w-full py-1.5 text-[12px] text-blue-600 border border-dashed border-blue-300 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-        onClick={() => {}}
+        onClick={addCondition}
       >
         + Add condition
       </button>
-      <div className="flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+      <div className="flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg mt-4">
         <CheckCircle2 size={13} className="text-emerald-600" />
         <span className="text-[11px] text-emerald-700 dark:text-emerald-400">12 of 15 rows match</span>
       </div>
@@ -347,6 +371,10 @@ function FilterConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
 
 function RenameConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
   const renames = nodeData.renames || {};
+  const handleRename = (field: string, newName: string) => {
+    onUpdate({ renames: { ...renames, [field]: newName } });
+  };
+
   return (
     <div className="space-y-3">
       <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">Rename Fields</label>
@@ -358,9 +386,9 @@ function RenameConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
             </span>
             <ArrowRightLeft size={12} className="text-slate-400 flex-shrink-0" />
             <input
-              defaultValue={renames[f.name] || f.name}
+              value={renames[f.name] || f.name}
               className="flex-1 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
-              onChange={() => {}}
+              onChange={(e) => handleRename(f.name, e.target.value)}
             />
           </div>
         ))}
@@ -371,6 +399,12 @@ function RenameConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pipelin
 
 function ChangeTypeConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
   const types = ['string', 'number', 'boolean', 'date', 'timestamp', 'json'];
+  const typeChanges = nodeData.typeChanges || {};
+  
+  const handleChangeType = (field: string, newType: string) => {
+    onUpdate({ typeChanges: { ...typeChanges, [field]: newType } });
+  };
+
   return (
     <div className="space-y-3">
       <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">Change Data Types</label>
@@ -381,8 +415,9 @@ function ChangeTypeConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pip
             <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-slate-500 font-mono">{f.type}</span>
             <span className="text-slate-400">→</span>
             <select
-              defaultValue={f.type}
+              value={typeChanges[f.name] || f.type}
               className="w-28 text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+              onChange={(e) => handleChangeType(f.name, e.target.value)}
             >
               {types.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
