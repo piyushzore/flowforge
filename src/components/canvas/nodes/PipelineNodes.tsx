@@ -184,6 +184,34 @@ function PipelineNodeComponent({ data, selected }: NodeProps<any>) {
           </p>
         )}
 
+        {/* Connected state details */}
+        {!isNote && data.configured && data.connectionName && (
+          <div className="mt-2 text-[10px] space-y-1 border-t border-slate-100 dark:border-slate-800 pt-2 text-slate-500 dark:text-slate-400">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
+                {String(data.connectionName)}
+              </span>
+              <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-1 rounded">✓ Connected</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{Number(data.rowCount || 0).toLocaleString()} rows</span>
+              <span>{Number(data.columnCount || 0)} cols</span>
+            </div>
+            {data.outputSchema && Array.isArray(data.outputSchema) && (
+              <div className="flex flex-wrap gap-0.5 pt-1">
+                {data.outputSchema.slice(0, 3).map((f: any, i: number) => (
+                  <span key={i} className="bg-slate-50 dark:bg-slate-850 px-1 rounded-sm text-[8px] text-slate-600 border border-slate-100 dark:border-slate-800 truncate">
+                    {f.name}
+                  </span>
+                ))}
+                {data.outputSchema.length > 3 && (
+                  <span className="text-[8px] text-slate-400 pl-0.5">+{data.outputSchema.length - 3} more</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Run progress */}
         {data.runStatus === 'running' && data.runProgress !== undefined && (
           <div className="mt-2">

@@ -84,7 +84,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <ScheduleConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
       default:
         if (nodeData.category === 'source' || nodeData.category === 'destination') {
-          return <ConnectionConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
+          return <ConnectionConfigContent nodeId={nodeId} nodeData={nodeData} onUpdate={onUpdate} />;
         }
         return <GenericConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
     }
@@ -551,61 +551,84 @@ function ScheduleConfigContent({ nodeData, onUpdate }: { nodeData: PipelineNodeD
   );
 }
 
-function ConnectionConfigContent({ nodeData, onUpdate }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void }) {
+import { useUIStore } from '../../store/ui-store';
+
+function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: string; nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void }) {
   const isSource = nodeData.category === 'source';
+  const openModal = useUIStore(s => s.openModal);
+
+  const handleOpenConnect = () => {
+    openModal('connect-data', {
+      id: nodeId,
+      label: nodeData.label,
+      category: nodeData.category,
+      subType: nodeData.subType
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Connection</label>
-        <select className="w-full text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-          <option value="">Select a connection...</option>
-          <option value="gs-1">My Google Sheets</option>
-          <option value="pg-1">Production PostgreSQL</option>
-          <option value="csv-1">CSV Upload</option>
-        </select>
-      </div>
-      {isSource && (
-        <>
-          <div>
-            <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Table / Sheet</label>
-            <select className="w-full text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
-              <option value="">Select table...</option>
-              <option value="customers">customers</option>
-              <option value="orders">orders</option>
-              <option value="products">products</option>
-            </select>
+      {nodeData.configured ? (
+        <div className="border border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5">
+              <CheckCircle2 size={14} /> Connected
+            </span>
+            <span className="text-[10px] text-slate-400">Last updated: {String(nodeData.lastUpdated || 'Just now')}</span>
           </div>
-          <div>
-            <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Sync Mode</label>
-            <div className="flex gap-2">
-              <button className="flex-1 py-1.5 text-[11px] rounded-lg font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700">Full Refresh</button>
-              <button className="flex-1 py-1.5 text-[11px] rounded-lg font-medium bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Incremental</button>
+          
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+              {String(nodeData.connectionName || 'Connected Source')}
+            </h4>
+            <p className="text-[11px] text-slate-500 font-medium">
+              {Number(nodeData.rowCount || 0).toLocaleString()} rows | {Number(nodeData.columnCount || 0)} columns
+            </p>
+          </div>
+
+          {nodeData.outputSchema && Array.isArray(nodeData.outputSchema) && (
+            <div className="pt-2 border-t border-emerald-100 dark:border-emerald-950 space-y-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Detected Schema:</span>
+              <div className="flex flex-wrap gap-1 max-h-[80px] overflow-y-auto">
+                {nodeData.outputSchema.map((field: any, idx: number) => (
+                  <span key={idx} className="text-[10px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                    {field.name} <span className="text-slate-400 font-mono text-[9px]">({field.type})</span>
+                  </span>
+                ))}
+              </div>
             </div>
+          )}
+
+          <div className="flex gap-2 pt-1.5">
+            <button
+              onClick={handleOpenConnect}
+              className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-850 dark:hover:bg-slate-750 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
+            >
+              Reconnect
+            </button>
+            <button
+              onClick={handleOpenConnect}
+              className="flex-1 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-700 dark:text-slate-300 rounded-lg text-[11px] font-semibold transition-all"
+            >
+              Replace
+            </button>
           </div>
-        </>
+        </div>
+      ) : (
+        <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
+          <Database className="w-8 h-8 text-slate-400 mx-auto" />
+          <div className="space-y-1">
+            <h4 className="text-xs font-semibold text-slate-900 dark:text-white">Configure Connection</h4>
+            <p className="text-[11px] text-slate-500 max-w-[220px] mx-auto">This node is not connected to a live data source yet.</p>
+          </div>
+          <button
+            onClick={handleOpenConnect}
+            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
+          >
+            🔌 Connect Data Source
+          </button>
+        </div>
       )}
-      {!isSource && (
-        <>
-          <div>
-            <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Target Table</label>
-            <input
-              placeholder="e.g. customers_synced"
-              className="w-full text-[12px] px-2 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
-            />
-          </div>
-          <div>
-            <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">Write Mode</label>
-            <div className="flex gap-2">
-              <button className="flex-1 py-1.5 text-[11px] rounded-lg font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700">Append</button>
-              <button className="flex-1 py-1.5 text-[11px] rounded-lg font-medium bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Replace</button>
-              <button className="flex-1 py-1.5 text-[11px] rounded-lg font-medium bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Upsert</button>
-            </div>
-          </div>
-        </>
-      )}
-      <button className="w-full py-2 text-[12px] font-medium bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors">
-        🔌 Test Connection
-      </button>
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 
+import ConnectDataModal from '../canvas/ConnectDataModal';
+
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -33,6 +35,9 @@ export default function AppLayout() {
           <Outlet context={{ commandPaletteOpen, setCommandPaletteOpen }} />
         </main>
       </div>
+
+      {/* Global Connection Modal overlay */}
+      <ConnectDataModal />
     </div>
   );
 }
