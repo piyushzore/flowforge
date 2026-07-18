@@ -177,14 +177,16 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300">Output Preview</h4>
-              <span className="text-[11px] text-slate-500">{samplePreviewData.length} rows × {Object.keys(samplePreviewData[0]).length} columns</span>
+              <span className="text-[11px] text-slate-500">
+                {(nodeData.previewData as any[] || samplePreviewData).length} rows × {Object.keys((nodeData.previewData as any[] || samplePreviewData)[0] || {}).length} columns
+              </span>
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-900">
-                      {Object.keys(samplePreviewData[0]).map((key) => (
+                      {Object.keys((nodeData.previewData as any[] || samplePreviewData)[0] || {}).map((key) => (
                         <th key={key} className="px-3 py-2 text-left font-medium text-slate-500 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap">
                           {key}
                         </th>
@@ -192,11 +194,11 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
                     </tr>
                   </thead>
                   <tbody>
-                    {samplePreviewData.map((row, i) => (
+                    {(nodeData.previewData as any[] || samplePreviewData).map((row: any, i: number) => (
                       <tr key={i} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                        {Object.values(row).map((val, j) => (
-                          <td key={j} className="px-3 py-1.5 text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            {String(val)}
+                        {Object.values(row).map((val: any, j: number) => (
+                          <td key={j} className="px-3 py-1.5 text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-[200px] truncate">
+                            {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                           </td>
                         ))}
                       </tr>

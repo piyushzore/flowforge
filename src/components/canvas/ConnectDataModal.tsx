@@ -163,45 +163,121 @@ export default function ConnectDataModal() {
 
   // fileInputRef moved above early return to comply with Rules of Hooks
 
+  const parseCsvLine = (text: string, delimiter: string) => {
+    // Basic CSV parser that handles quotes
+    const re = new RegExp(`(?:^|${delimiter})(?:"([^"]*)"|([^${delimiter}]+))`, 'g');
+    let match;
+    const values: string[] = [];
+    while ((match = re.exec(text)) !== null) {
+      values.push(match[1] !== undefined ? match[1] : match[2] || '');
+    }
+    return values;
+  };
+
+  const inferType = (value: any) => {
+    if (value === null || value === undefined || value === '') return 'String';
+    if (!isNaN(Number(value))) return Number.isInteger(Number(value)) ? 'Integer' : 'Decimal';
+    if (typeof value === 'boolean' || value === 'true' || value === 'false') return 'Boolean';
+    if (typeof value === 'object') return 'JSON';
+    // Simple date check
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && !isNaN(Date.parse(value))) return 'Timestamp';
+    return 'String';
+  };
   const handleFileChange = (e: any) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-      setTesting(true);
-      setTestResult(null);
-      setErrorMessage('');
-      
-      // Simulate auto-detection of schema and rows for the uploaded file
-      setTimeout(() => {
-        setTesting(false);
-        setTestResult('success');
-        setRowCount(Math.floor(500 + Math.random() * 2000));
-        
+    if (!file) return;
+
+    setFileName(file.name);
+    setTesting(true);
+    setTestResult(null);
+    setErrorMessage('');
+
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+
         if (file.name.endsWith('.json')) {
-          setSchemaFields([
-            { name: 'user_id', type: 'String' },
-            { name: 'event_type', type: 'String' },
-            { name: 'properties', type: 'JSON' }
-          ]);
-          setPreviewRows([
-            { user_id: 'usr_01', event_type: 'page_view', properties: '{"path":"/home"}' },
-            { user_id: 'usr_02', event_type: 'purchase', properties: '{"amount":99.9}' }
-          ]);
+          // Parse JSON files
+          let jsonData: any[];
+          const parsed = JSON.parse(text);
+          jsonData = Array.isArray(parsed) ? parsed : parsed.data ? parsed.data : [parsed];
+
+          if (jsonData.length === 0) {
+            setTesting(false);
+            setTestResult('error');
+            setErrorMessage('JSON file contains no data rows.');
+            return;
+          }
+
+          const keys = Object.keys(jsonData[0]);
+          setSchemaFields(keys.map(k => ({
+            name: k,
+            type: inferType(jsonData[0][k])
+          })));
+          setRowCount(jsonData.length);
+          setPreviewRows(jsonData.slice(0, 5));
+          setTesting(false);
+          setTestResult('success');
+
         } else {
-          setSchemaFields([
-            { name: 'id', type: 'Integer' },
-            { name: 'name', type: 'String' },
-            { name: 'email', type: 'String' },
-            { name: 'status', type: 'String' }
-          ]);
-          setPreviewRows([
-            { id: 1, name: 'Alice Smith', email: 'alice@example.com', status: 'Active' },
-            { id: 2, name: 'Bob Jones', email: 'bob@example.com', status: 'Pending' },
-            { id: 3, name: 'Charlie Brown', email: 'charlie@example.com', status: 'Inactive' }
-          ]);
+          // Parse CSV / TSV files
+          const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+          if (lines.length < 2) {
+            setTesting(false);
+            setTestResult('error');
+            setErrorMessage('File appears empty or has no data rows.');
+            return;
+          }
+
+          // Detect delimiter
+          const firstLine = lines[0];
+          const delimiter = firstLine.includes('\t') ? '\t' : 
+                           firstLine.includes(';') ? ';' : ',';
+
+          const headers = parseCsvLine(firstLine, delimiter);
+          const dataRows = lines.slice(1);
+
+          // Parse first 5 rows for preview
+          const preview = dataRows.slice(0, 5).map(line => {
+            const values = parseCsvLine(line, delimiter);
+            const row: Record<string, string | number> = {};
+            headers.forEach((h, i) => {
+              const val = values[i] || '';
+              // Try to parse as number
+              const num = Number(val);
+              row[h] = val !== '' && !isNaN(num) && val.trim() !== '' ? num : val;
+            });
+            return row;
+          });
+
+          // Infer types from first data row
+          const firstDataValues = parseCsvLine(dataRows[0], delimiter);
+          setSchemaFields(headers.map((h, i) => ({
+            name: h,
+            type: inferType(firstDataValues[i])
+          })));
+
+          setRowCount(dataRows.length);
+          setPreviewRows(preview);
+          setTesting(false);
+          setTestResult('success');
         }
-      }, 800);
-    }
+      } catch (err) {
+        setTesting(false);
+        setTestResult('error');
+        setErrorMessage(`Failed to parse file: ${(err as Error).message}`);
+      }
+    };
+
+    reader.onerror = () => {
+      setTesting(false);
+      setTestResult('error');
+      setErrorMessage('Failed to read file. Please try again.');
+    };
+
+    reader.readAsText(file);
   };
 
   const triggerFileSelect = () => {
