@@ -63,6 +63,9 @@ const paletteItems: PaletteItem[] = [
   { subType: 'ai-transform', label: 'AI Transform', category: 'transform', description: 'Transform with plain English', icon: <Bot size={15} /> },
   { subType: 'custom-code', label: 'Custom Code', category: 'transform', description: 'Python or SQL script', icon: <Terminal size={15} /> },
 
+  // Validation
+  { subType: 'quality-check', label: 'Quality Check', category: 'validation', description: 'Data validation rules', icon: <Shield size={15} /> },
+
   // Destinations
   { subType: 'postgres', label: 'Bronze Landing Zone', category: 'destination', description: 'Raw Bronze storage layer', icon: <Database size={15} /> },
   { subType: 'snowflake', label: 'Silver Cleaned Layer', category: 'destination', description: 'Validated Silver storage layer', icon: <Cloud size={15} /> },
@@ -89,19 +92,21 @@ const paletteItems: PaletteItem[] = [
 ];
 
 const categoryLabels: Record<NodeCategory, string> = {
-  source: 'Sources',
-  transform: 'Transforms',
-  destination: 'Destinations',
+  source: 'Extract (Sources)',
+  transform: 'Transform',
+  validation: 'Data Quality & Validation',
+  destination: 'Load (Destinations)',
   control: 'Control Flow',
   orchestration: 'Orchestration',
   note: 'Notes',
 };
 
-const categoryOrder: NodeCategory[] = ['source', 'transform', 'destination', 'control', 'orchestration', 'note'];
+const categoryOrder: NodeCategory[] = ['source', 'transform', 'validation', 'destination', 'control', 'orchestration', 'note'];
 
 const categoryBadgeColors: Record<NodeCategory, string> = {
   source: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   transform: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  validation: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
   destination: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
   control: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   orchestration: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',

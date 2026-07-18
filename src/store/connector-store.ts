@@ -20,26 +20,7 @@ interface ConnectorState {
 
 export const useConnectorStore = create<ConnectorState>()((set, get) => ({
   definitions: connectorDefinitions,
-  instances: [
-    {
-      id: 'gs-1',
-      name: 'Marketing Google Sheets',
-      connectorId: 'google-sheets',
-      createdAt: new Date().toISOString(),
-      health: 'healthy',
-      pipelinesUsing: 2,
-      config: {}
-    },
-    {
-      id: 'pg-1',
-      name: 'Production PostgreSQL',
-      connectorId: 'postgres',
-      createdAt: new Date().toISOString(),
-      health: 'healthy',
-      pipelinesUsing: 5,
-      config: { host: 'db.prod.internal' }
-    }
-  ] as any[],
+  instances: [],
   
   addInstance: (instance) => {
     const id = uuidv4();

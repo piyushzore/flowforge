@@ -112,6 +112,8 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <DeduplicateConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'schedule':
         return <ScheduleConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
+      case 'quality-check':
+        return <QualityCheckConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       default:
         if (nodeData.category === 'source' || nodeData.category === 'destination') {
           return <ConnectionConfigContent nodeId={nodeId} nodeData={nodeData} onUpdate={onUpdate} />;
@@ -960,4 +962,81 @@ function getNodeDescription(subType: string): string {
     'wait-delay': 'Pause pipeline execution for a specified duration before continuing.',
   };
   return descriptions[subType] || 'Configure this step to process your data.';
+}
+
+// --- Validation / Quality Check Config Content ---
+function QualityCheckConfigContent({ nodeData, onUpdate, fields }: { nodeData: PipelineNodeData; onUpdate: (data: Partial<PipelineNodeData>) => void; fields: FieldSchema[] }) {
+  const config = nodeData.config || {};
+  const rules: any[] = Array.isArray(config.rules) ? config.rules : [];
+
+  const addRule = () => {
+    onUpdate({
+      config: {
+        ...config,
+        rules: [...rules, { field: fields[0]?.name || '', type: 'not_null', pattern: '' }]
+      }
+    });
+  };
+
+  const updateRule = (idx: number, updates: any) => {
+    const newRules = [...rules];
+    newRules[idx] = { ...newRules[idx], ...updates };
+    onUpdate({ config: { ...config, rules: newRules } });
+  };
+
+  const removeRule = (idx: number) => {
+    onUpdate({ config: { ...config, rules: rules.filter((_: any, i: number) => i !== idx) } });
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="space-y-3">
+        {rules.map((rule: any, idx: number) => (
+          <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg space-y-2 relative group">
+            <button
+              onClick={() => removeRule(idx)}
+              className="absolute -right-2 -top-2 w-5 h-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+            >
+              <X size={10} />
+            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={rule.field}
+                onChange={(e) => updateRule(idx, { field: e.target.value })}
+                className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1.5 text-xs text-slate-900 dark:text-white"
+              >
+                {fields.map(f => (
+                  <option key={f.name} value={f.name}>{f.name}</option>
+                ))}
+              </select>
+              <select
+                value={rule.type}
+                onChange={(e) => updateRule(idx, { type: e.target.value })}
+                className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1.5 text-xs text-slate-900 dark:text-white"
+              >
+                <option value="not_null">Is Not Null</option>
+                <option value="regex">Matches Regex</option>
+              </select>
+            </div>
+            {rule.type === 'regex' && (
+              <input
+                type="text"
+                placeholder="Regex pattern (e.g., ^[A-Z]+$)"
+                value={rule.pattern}
+                onChange={(e) => updateRule(idx, { pattern: e.target.value })}
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+              />
+            )}
+          </div>
+        ))}
+
+        <button
+          onClick={addRule}
+          className="w-full py-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors flex items-center justify-center gap-2"
+        >
+          <Shield size={14} /> Add Validation Rule
+        </button>
+      </div>
+    </div>
+  );
 }

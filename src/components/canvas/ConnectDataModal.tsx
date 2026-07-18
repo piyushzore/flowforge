@@ -143,20 +143,12 @@ export default function ConnectDataModal() {
       return;
     }
 
+    // Unimplemented connectors fallback
     setTimeout(() => {
       setTesting(false);
-      setTestResult('success');
-      setRowCount(350);
-      setSchemaFields([
-        { name: 'id', type: 'String' },
-        { name: 'created_at', type: 'Timestamp' },
-        { name: 'payload', type: 'JSON' }
-      ]);
-      setPreviewRows([
-        { id: 'evt_9281a', created_at: '2026-07-18T10:00:00Z', payload: '{"event":"signup"}' },
-        { id: 'evt_9281b', created_at: '2026-07-18T10:05:00Z', payload: '{"event":"checkout"}' }
-      ]);
-    }, 1000);
+      setTestResult('error');
+      setErrorMessage('This connector requires a backend service to authenticate and fetch data. For this local demo, please use File Upload (CSV/JSON) or an open REST API.');
+    }, 500);
   };
 
   const handleConfirm = () => {
@@ -253,7 +245,7 @@ export default function ConnectDataModal() {
             type: inferType(jsonData[0][k])
           })));
           setRowCount(jsonData.length);
-          setPreviewRows(jsonData.slice(0, 5));
+          setPreviewRows(jsonData);
           setTesting(false);
           setTestResult('success');
 
@@ -263,7 +255,6 @@ export default function ConnectDataModal() {
             header: true,
             dynamicTyping: true,
             skipEmptyLines: true,
-            preview: 100, // Just get first 100 rows for preview
             complete: (results) => {
               if (results.errors.length && results.data.length === 0) {
                  setTesting(false);

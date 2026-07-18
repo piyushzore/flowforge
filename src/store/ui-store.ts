@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Notification } from '../types/common';
-import { notifications as mockNotifications } from '../data/mock-users';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface Toast {
@@ -64,7 +63,7 @@ export const useUIStore = create<UIState>()((set) => ({
   commandPaletteOpen: false,
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   
-  notifications: mockNotifications,
+  notifications: [],
   addNotification: (n) => set((state) => ({ notifications: [n, ...state.notifications] })),
   markNotificationRead: (id) => set((state) => ({
     notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)

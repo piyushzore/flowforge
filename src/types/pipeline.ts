@@ -1,10 +1,10 @@
 import type { Node, Edge } from '@xyflow/react';
 
-export type NodeCategory = 'source' | 'transform' | 'destination' | 'control' | 'orchestration' | 'note';
+export type NodeCategory = 'source' | 'transform' | 'destination' | 'control' | 'orchestration' | 'note' | 'validation';
 
 export type SourceType = 'google-sheets' | 'postgres' | 'mysql' | 'sql-server' | 'oracle' | 'mongodb' | 'mariadb' | 'sqlite' | 'snowflake' | 'bigquery' | 'redshift' | 'databricks' | 'clickhouse' | 's3' | 'gcs' | 'azure-blob' | 'sftp' | 'csv-upload' | 'salesforce' | 'hubspot' | 'shopify' | 'stripe' | 'ga4' | 'mailchimp' | 'zendesk' | 'google-ads' | 'meta-ads' | 'quickbooks' | 'slack' | 'airtable' | 'kafka' | 'kinesis' | 'webhook' | 'rest-api' | 'graphql' | 'jdbc';
 
-export type TransformType = 'filter' | 'sort' | 'deduplicate' | 'rename' | 'change-type' | 'add-remove-fields' | 'null-handling' | 'group-by' | 'join' | 'union' | 'pivot' | 'unpivot' | 'window-function' | 'trim-case' | 'regex' | 'split-column' | 'concat' | 'date-parse' | 'lookup' | 'api-enrichment' | 'validation' | 'ai-transform' | 'custom-code';
+export type TransformType = 'filter' | 'sort' | 'deduplicate' | 'rename' | 'change-type' | 'add-remove-fields' | 'null-handling' | 'group-by' | 'join' | 'union' | 'pivot' | 'unpivot' | 'window-function' | 'trim-case' | 'regex' | 'split-column' | 'concat' | 'date-parse' | 'lookup' | 'api-enrichment' | 'validation' | 'ai-transform' | 'custom-code' | 'quality-check';
 
 export type ControlType = 'conditional' | 'merge' | 'loop' | 'wait-delay';
 

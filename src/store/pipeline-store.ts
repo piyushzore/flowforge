@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
+import { executePipelineLocal } from '../engine/executor';
 import type { Pipeline, PipelineNode, PipelineEdge, PipelineNodeData, PipelineRun } from '../types/pipeline';
-import { mockPipelines } from '../data/mock-pipelines';
-import { mockRuns } from '../data/mock-runs';
+// Import types and utilities
 
 export type ProcessingMode = 'batch' | 'stream' | 'micro-batch';
 
@@ -76,29 +76,6 @@ interface PipelineState {
   loadAllPipelines: () => Promise<void>;
 }
 
-// ─── Helper: topological sort ───────────────────────────────────────────
-function topoSort(nodes: PipelineNode[], edges: PipelineEdge[]): string[] {
-  const adj = new Map<string, string[]>();
-  const inDeg = new Map<string, number>();
-  nodes.forEach(n => { adj.set(n.id, []); inDeg.set(n.id, 0); });
-  edges.forEach(e => {
-    adj.get(e.source)?.push(e.target);
-    inDeg.set(e.target, (inDeg.get(e.target) || 0) + 1);
-  });
-  const queue = nodes.filter(n => (inDeg.get(n.id) || 0) === 0).map(n => n.id);
-  const result: string[] = [];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    result.push(id);
-    for (const neighbor of (adj.get(id) || [])) {
-      const deg = (inDeg.get(neighbor) || 1) - 1;
-      inDeg.set(neighbor, deg);
-      if (deg === 0) queue.push(neighbor);
-    }
-  }
-  return result;
-}
-
 // ─── Helper: set edge data ──────────────────────────────────────────────
 function setEdgeStatus(
   edges: PipelineEdge[],
@@ -118,8 +95,8 @@ function setAllEdgesStatus(edges: PipelineEdge[], status: string): PipelineEdge[
 }
 
 export const usePipelineStore = create<PipelineState>()((set, get) => ({
-  pipelines: mockPipelines,
-  activePipelineId: mockPipelines[0]?.id || null,
+  pipelines: [],
+  activePipelineId: null,
   
   getActivePipeline: () => {
     const { pipelines, activePipelineId } = get();
@@ -306,213 +283,85 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     set({ isRunning: false, runningPipelineId: null, runStats: null, _runTimers: [] });
   },
   
-  startTestRun: (pipelineId) => {
+  startTestRun: async (pipelineId) => {
     const pipeline = get().pipelines.find(p => p.id === pipelineId);
     if (!pipeline || pipeline.nodes.length === 0) return;
-    const mode = get().processingMode;
-
-    // Stop any existing run
+    
     get().stopRun();
-
+    
     const startTime = Date.now();
-    const totalRows = mode === 'stream' ? Infinity : (5000 + Math.floor(Math.random() * 15000));
-    const sortedIds = topoSort(pipeline.nodes, pipeline.edges);
-    const timers: number[] = [];
-
-    // Initial state — all queued
-    set({ isRunning: true, runningPipelineId: pipelineId, _runTimers: timers });
+    
+    set({ isRunning: true, runningPipelineId: pipelineId, _runTimers: [] });
     get().setNodes(pipelineId, pipeline.nodes.map(n => ({
       ...n, data: { ...n.data, runStatus: 'queued', runProgress: 0, rowsProcessed: 0 } as PipelineNodeData
     })));
     get().setEdges(pipelineId, setAllEdgesStatus(pipeline.edges, 'queued'));
+    
+    // Set initial stats
     set({
       runStats: {
-        totalRows, processedRows: 0, failedRows: 0,
+        totalRows: 0, processedRows: 0, failedRows: 0,
         throughput: 0, latency: 0,
         startTime, elapsedMs: 0,
-        nodesCompleted: 0, nodesTotal: sortedIds.length,
+        nodesCompleted: 0, nodesTotal: pipeline.nodes.length,
         currentNodeId: null, errorNodeId: null, errorMessage: null,
       }
     });
 
-    if (mode === 'batch' || mode === 'micro-batch') {
-      // ─── BATCH MODE ───────────────────────────────────────────────
-      const nodeDelay = mode === 'micro-batch' ? 900 : 1400;
-      const progressInterval = 120;
+    let processedRows = 0;
+    let completedNodes = 0;
 
-      let stepIndex = 0;
-
-      const runNextNode = () => {
-        if (!get().isRunning) return;
-        if (stepIndex >= sortedIds.length) {
-          // ─── All done (success) ───
-          const elapsed = Date.now() - startTime;
-          set(state => ({
-            runStats: state.runStats ? {
-              ...state.runStats,
-              processedRows: totalRows,
-              throughput: Math.round(totalRows / (elapsed / 1000)),
-              elapsedMs: elapsed,
-              nodesCompleted: sortedIds.length,
-              currentNodeId: null,
-            } : null
-          }));
-          get().addRun({
-            id: `r-${Date.now()}`, pipelineId, pipelineName: pipeline.name,
-            status: 'success', trigger: 'manual',
-            startedAt: new Date(startTime).toISOString(),
-            completedAt: new Date().toISOString(),
-            duration: Math.round(elapsed / 1000),
-            rowsIn: totalRows, rowsOut: totalRows, nodeResults: []
-          });
-          // Keep isRunning true briefly so UI shows green, then wind down
-          const t = window.setTimeout(() => {
-            set({ isRunning: false, runningPipelineId: null });
-          }, 3000);
-          timers.push(t);
-          return;
-        }
-
-        const nodeId = sortedIds[stepIndex];
-
-        // Start running this node
-        get().updateNode(pipelineId, nodeId, { runStatus: 'running', runProgress: 0, rowsProcessed: 0 });
-        set(state => ({
-          runStats: state.runStats ? { ...state.runStats, currentNodeId: nodeId } : null
-        }));
-
-        // Set incoming edges to 'running'
-        const currentPipeline = get().pipelines.find(p => p.id === pipelineId);
-        if (currentPipeline) {
-          const incomingEdges = currentPipeline.edges.filter(e => e.target === nodeId);
-          if (incomingEdges.length > 0) {
-            const updatedEdges = currentPipeline.edges.map(e =>
-              e.target === nodeId
-                ? { ...e, data: { ...(e.data || {}), status: 'running', throughput: Math.round(totalRows / (nodeDelay / 1000) * 0.7) } }
-                : e
-            );
-            get().setEdges(pipelineId, updatedEdges);
-          }
-        }
-
-        // Simulate progress ticks
-        const rowsForNode = Math.round(totalRows / sortedIds.length);
-        let progressTicks = 0;
-        const maxTicks = Math.round(nodeDelay / progressInterval);
-
-        const progressTimer = window.setInterval(() => {
-          if (!get().isRunning) { clearInterval(progressTimer); return; }
-          progressTicks++;
-          const pct = Math.min(Math.round((progressTicks / maxTicks) * 100), 99);
-          const rowsDone = Math.round((pct / 100) * rowsForNode);
-          get().updateNode(pipelineId, nodeId, {
-            runProgress: pct,
-            rowsProcessed: rowsDone,
-          });
-          const elapsed = Date.now() - startTime;
-          const processed = Math.round((stepIndex / sortedIds.length + pct / 100 / sortedIds.length) * totalRows);
-          set(state => ({
-            runStats: state.runStats ? {
-              ...state.runStats,
-              processedRows: processed,
-              throughput: Math.round(processed / (elapsed / 1000)),
-              latency: Math.round(20 + Math.random() * 40),
-              elapsedMs: elapsed,
-            } : null
-          }));
-        }, progressInterval);
-        timers.push(progressTimer as unknown as number);
-
-        // Complete this node
-        const completeTimer = window.setTimeout(() => {
-          clearInterval(progressTimer);
-          if (!get().isRunning) return;
-
-          get().updateNode(pipelineId, nodeId, {
-            runStatus: 'success',
-            runProgress: 100,
-            rowsProcessed: rowsForNode,
-          });
-
-          // Set outgoing edges from this node to success (green flowing)
-          const p = get().pipelines.find(pp => pp.id === pipelineId);
-          if (p) {
-            get().setEdges(pipelineId, setEdgeStatus(p.edges, nodeId, 'success', Math.round(totalRows / (nodeDelay / 1000))));
-            // Also mark incoming edges as success
-            const inEdgesGreen = p.edges.map(e =>
-              e.target === nodeId && (e.data as any)?.status === 'running'
-                ? { ...e, data: { ...(e.data || {}), status: 'success', throughput: Math.round(totalRows / (nodeDelay / 1000)) } }
-                : e
-            );
-            get().setEdges(pipelineId, setEdgeStatus(inEdgesGreen, nodeId, 'success', Math.round(totalRows / (nodeDelay / 1000))));
-          }
-
-          set(state => ({
-            runStats: state.runStats ? {
-              ...state.runStats,
-              nodesCompleted: stepIndex + 1,
-            } : null
-          }));
-
-          stepIndex++;
-          const t = window.setTimeout(runNextNode, 300);
-          timers.push(t);
-        }, nodeDelay);
-        timers.push(completeTimer);
-      };
-
-      const startTimer = window.setTimeout(runNextNode, 400);
-      timers.push(startTimer);
-
-    } else {
-      // ─── STREAM MODE ──────────────────────────────────────────────
-      // All nodes go "running" simultaneously, edges show streaming particles
-      get().setNodes(pipelineId, pipeline.nodes.map(n => ({
-        ...n, data: { ...n.data, runStatus: 'running', runProgress: undefined, rowsProcessed: 0 } as PipelineNodeData
-      })));
-      get().setEdges(pipelineId, pipeline.edges.map(e => ({
-        ...e, data: { ...(e.data || {}), status: 'streaming', throughput: 0 }
-      })));
-
-      let streamRows = 0;
-      const streamTick = window.setInterval(() => {
-        if (!get().isRunning) { clearInterval(streamTick); return; }
-        const batchSize = 50 + Math.floor(Math.random() * 200);
-        streamRows += batchSize;
+    await executePipelineLocal(pipeline.nodes, pipeline.edges, (nodeId, outputData, error) => {
+      const p = get().pipelines.find(pp => pp.id === pipelineId);
+      if (!p) return;
+      if (error) {
+        get().updateNode(pipelineId, nodeId, { runStatus: 'failed' });
+      } else {
+        processedRows += outputData.length;
+        completedNodes++;
         const elapsed = Date.now() - startTime;
-        const throughput = Math.round(streamRows / (elapsed / 1000));
-        const latency = Math.round(5 + Math.random() * 25);
-
-        // Update all nodes with streaming row count
-        const curPipeline = get().pipelines.find(p => p.id === pipelineId);
-        if (curPipeline) {
-          get().setNodes(pipelineId, curPipeline.nodes.map(n => ({
-            ...n, data: { ...n.data, rowsProcessed: streamRows + Math.floor(Math.random() * 50) } as PipelineNodeData
-          })));
-          get().setEdges(pipelineId, curPipeline.edges.map(e => ({
-            ...e, data: { ...(e.data || {}), status: 'streaming', throughput }
-          })));
-        }
+        
+        get().updateNode(pipelineId, nodeId, { 
+          runStatus: 'success', 
+          runProgress: 100,
+          rowsProcessed: outputData.length,
+          previewData: outputData 
+        });
+        
+        get().setEdges(pipelineId, setEdgeStatus(p.edges, nodeId, 'success', Math.round(outputData.length / 0.4)));
 
         set(state => ({
           runStats: state.runStats ? {
             ...state.runStats,
-            processedRows: streamRows,
-            throughput,
-            latency,
+            processedRows,
+            totalRows: Math.max(state.runStats.totalRows, outputData.length),
+            throughput: elapsed > 0 ? Math.round(processedRows / (elapsed / 1000)) : 0,
             elapsedMs: elapsed,
+            nodesCompleted: completedNodes,
+            currentNodeId: nodeId
           } : null
         }));
-      }, 300);
-      timers.push(streamTick as unknown as number);
-    }
+      }
+    });
 
-    set({ _runTimers: timers });
+    const elapsed = Date.now() - startTime;
+    get().addRun({
+      id: `r-${Date.now()}`, pipelineId, pipelineName: pipeline.name,
+      status: 'success', trigger: 'manual',
+      startedAt: new Date(startTime).toISOString(),
+      completedAt: new Date().toISOString(),
+      duration: Math.round(elapsed / 1000),
+      rowsIn: processedRows, rowsOut: processedRows, nodeResults: []
+    });
+
+    setTimeout(() => {
+      set({ isRunning: false, runningPipelineId: null });
+    }, 1500);
   },
   
   startRun: (pipelineId) => get().startTestRun(pipelineId),
   
-  runs: mockRuns,
+  runs: [],
   addRun: (run) => set(state => ({ runs: [run, ...state.runs] })),
   
   saveVersion: (pipelineId, name) => {
