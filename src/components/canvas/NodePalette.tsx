@@ -64,15 +64,12 @@ const paletteItems: PaletteItem[] = [
   { subType: 'custom-code', label: 'Custom Code', category: 'transform', description: 'Python or SQL script', icon: <Terminal size={15} /> },
 
   // Destinations
-  { subType: 'google-sheets', label: 'Google Sheets', category: 'destination', description: 'Write to Google Sheets', icon: <FileSpreadsheet size={15} /> },
-  { subType: 'postgres', label: 'PostgreSQL', category: 'destination', description: 'Write to PostgreSQL', icon: <Database size={15} /> },
-  { subType: 'csv-upload', label: 'CSV Download', category: 'destination', description: 'Export as CSV file', icon: <Upload size={15} /> },
-  { subType: 'bigquery', label: 'BigQuery', category: 'destination', description: 'Write to BigQuery', icon: <Cloud size={15} /> },
-  { subType: 'snowflake', label: 'Snowflake', category: 'destination', description: 'Write to Snowflake', icon: <Cloud size={15} /> },
-  { subType: 'mysql', label: 'MySQL', category: 'destination', description: 'Write to MySQL', icon: <Database size={15} /> },
-  { subType: 'hubspot', label: 'HubSpot', category: 'destination', description: 'Push to HubSpot', icon: <Cloud size={15} /> },
-  { subType: 's3', label: 'Amazon S3', category: 'destination', description: 'Write to S3 bucket', icon: <Cloud size={15} /> },
-  { subType: 'slack', label: 'Slack', category: 'destination', description: 'Send to Slack', icon: <Cloud size={15} /> },
+  { subType: 'postgres', label: 'Bronze Landing Zone', category: 'destination', description: 'Raw Bronze storage layer', icon: <Database size={15} /> },
+  { subType: 'snowflake', label: 'Silver Cleaned Layer', category: 'destination', description: 'Validated Silver storage layer', icon: <Cloud size={15} /> },
+  { subType: 'bigquery', label: 'Gold Analytics Layer', category: 'destination', description: 'Aggregated Gold storage layer', icon: <Cloud size={15} /> },
+  { subType: 'google-sheets', label: 'BI Serving (Power BI/Tableau)', category: 'destination', description: 'Serve semantic data model to BI tools', icon: <FileSpreadsheet size={15} /> },
+  { subType: 'slack', label: 'AI Serving Model', category: 'destination', description: 'Feed serving feature tables to ML/AI models', icon: <Bot size={15} /> },
+  { subType: 'rest-api', label: 'Served API Endpoint', category: 'destination', description: 'Expose Gold layer data via secure API', icon: <Globe size={15} /> },
 
   // Control
   { subType: 'conditional', label: 'Conditional', category: 'control', description: 'Branch by condition', icon: <GitBranch size={15} /> },

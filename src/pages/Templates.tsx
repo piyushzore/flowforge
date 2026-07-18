@@ -6,35 +6,35 @@ import { useNavigate } from 'react-router-dom';
 const mockTemplates = [
   {
     id: 't-1',
-    name: 'Shopify Orders to BigQuery',
-    description: 'Sync new Shopify orders to BigQuery for analysis, parsing nested JSON fields automatically.',
-    category: 'e-commerce',
+    name: 'Bronze Raw Ingestion (IoT & Clickstream)',
+    description: 'Ingest multiple raw data streams (IoT sensors, application logs, webhooks) and land them into the Bronze landing zone (S3/PostgreSQL) in batch or stream.',
+    category: 'Ingestion (Bronze)',
     complexity: 'medium',
-    icon: '🛒'
+    icon: '📥'
   },
   {
     id: 't-2',
-    name: 'Salesforce Leads to Google Sheets',
-    description: 'Extract leads daily, clean up phone numbers, and push to a Google Sheet for the SDR team.',
-    category: 'sales',
-    complexity: 'simple',
-    icon: '☁️'
+    name: 'Silver Layer Data Quality & Cleaning',
+    description: 'Clean raw Bronze data. Apply null handling, schema validation rules, trim/clean text, and write verified data to the Silver Layer (Snowflake/Delta Lake).',
+    category: 'Quality & Clean (Silver)',
+    complexity: 'advanced',
+    icon: '✨'
   },
   {
     id: 't-3',
-    name: 'Stripe Payments to Snowflake',
-    description: 'Ingest Stripe payment events, filter for successful charges, and load into Snowflake.',
-    category: 'finance',
-    complexity: 'medium',
-    icon: '💳'
+    name: 'Gold Layer served Semantic Model',
+    description: 'Aggregate and model Silver data. Build consolidated semantic schemas using Group By, Pivot, and Custom Code to serve Power BI, Tableau, and AI models.',
+    category: 'Serving & Modeling (Gold)',
+    complexity: 'advanced',
+    icon: '🏆'
   },
   {
     id: 't-4',
-    name: 'PostgreSQL to Data Warehouse',
-    description: 'Full database replication using Change Data Capture (CDC) with null handling.',
-    category: 'engineering',
+    name: 'Real-Time Stream Processing (Kafka to BI)',
+    description: 'Read CDC events from Kafka/MySQL, join streams, run window aggregations, and push served insights directly to real-time serving dashboard APIs.',
+    category: 'Streaming',
     complexity: 'advanced',
-    icon: '🐘'
+    icon: '⚡'
   }
 ];
 
