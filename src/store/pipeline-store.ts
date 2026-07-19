@@ -119,22 +119,21 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
       nodes: [],
       edges: []
     };
-    set(state => ({ pipelines: [...state.pipelines, newPipeline], activePipelineId: id }));
+    set(state => ({ pipelines: [...state.pipelines, newPipeline], activePipelineId: id, saveStatus: 'unsaved' }));
     return id;
   },
   
-  deletePipeline: (id) => {
+  deletePipeline: async (id) => {
     set(state => ({
       pipelines: state.pipelines.filter(p => p.id !== id),
       activePipelineId: state.activePipelineId === id ? null : state.activePipelineId
     }));
-    idbDel(`pipeline-${id}`).then(() => {
-      idbGet<string[]>('pipeline-index').then(index => {
-        if (index) {
-          idbSet('pipeline-index', index.filter(i => i !== id));
-        }
-      });
-    }).catch(console.error);
+    try {
+      const { supabase } = await import('../lib/supabase');
+      await supabase.from('pipelines').delete().eq('id', id);
+    } catch (e) {
+      console.error('Failed to delete pipeline', e);
+    }
   },
   
   updatePipeline: (id, updates) => set(state => ({
@@ -399,33 +398,73 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     const pipeline = get().pipelines.find(p => p.id === id);
     if (!pipeline) return;
     try {
-      await idbSet(`pipeline-${id}`, pipeline);
-      
-      const index = (await idbGet<string[]>('pipeline-index')) || [];
-      if (!index.includes(id)) {
-        await idbSet('pipeline-index', [...index, id]);
+      const { supabase } = await import('../lib/supabase');
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) throw new Error('Not authenticated');
+
+      // We need to fetch the org_id if not present
+      let orgId = pipeline.org_id;
+      if (!orgId) {
+        const { data } = await supabase.from('users').select('org_id').eq('id', userData.user.id).single();
+        if (data) orgId = data.org_id;
       }
+
+      if (!orgId) throw new Error('No org_id found');
+
+      const payload = {
+        id: pipeline.id,
+        org_id: orgId,
+        name: pipeline.name,
+        nodes: pipeline.nodes,
+        edges: pipeline.edges,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('pipelines')
+        .upsert(payload, { onConflict: 'id' });
+        
+      if (error) throw error;
+      set({ saveStatus: 'saved' });
     } catch (e) {
-      console.error('Failed to save pipeline', e);
+      console.error('Failed to save pipeline to Supabase', e);
+      set({ saveStatus: 'unsaved' });
     }
   },
   
   loadAllPipelines: async () => {
     try {
-      const index = (await idbGet<string[]>('pipeline-index')) || [];
-      if (index.length === 0) return;
+      const { supabase } = await import('../lib/supabase');
+      const { data, error } = await supabase
+        .from('pipelines')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      if (!data || data.length === 0) return;
       
-      const loadedPipelines: Pipeline[] = [];
-      for (const id of index) {
-        const p = await idbGet<Pipeline>(`pipeline-${id}`);
-        if (p) loadedPipelines.push(p);
-      }
+      const loadedPipelines: Pipeline[] = data.map((row: any) => ({
+        id: row.id,
+        org_id: row.org_id,
+        name: row.name,
+        description: '', // Can add to DB schema later if needed
+        status: 'draft',
+        workspaceId: row.org_id,
+        createdBy: row.created_by || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        currentVersionIndex: 0,
+        versions: [],
+        nodes: row.nodes || [],
+        edges: row.edges || []
+      }));
       
-      if (loadedPipelines.length > 0) {
-        set({ pipelines: loadedPipelines, activePipelineId: loadedPipelines[0].id });
-      }
+      set({ 
+        pipelines: loadedPipelines, 
+        activePipelineId: loadedPipelines.length > 0 ? loadedPipelines[0].id : null 
+      });
     } catch (e) {
-      console.error('Failed to load pipelines', e);
+      console.error('Failed to load pipelines from Supabase', e);
     }
   }
 }));

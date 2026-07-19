@@ -6,9 +6,15 @@ import {
 import Papa from 'papaparse';
 import { useUIStore } from '../../store/ui-store';
 import { usePipelineStore } from '../../store/pipeline-store';
+import { supabase } from '../../lib/supabase';
 
 interface FieldSchema {
   name: string;
+  type: string;
+}
+
+interface ConnectDataModalProps {
+  nodeId: string;
   type: string;
 }
 
@@ -211,7 +217,7 @@ export default function ConnectDataModal() {
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && !isNaN(Date.parse(value))) return 'Timestamp';
     return 'String';
   };
-  const handleFileChange = (e: any) => {
+  const handleFileChange = async (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -219,6 +225,24 @@ export default function ConnectDataModal() {
     setTesting(true);
     setTestResult(null);
     setErrorMessage('');
+
+    // Upload to Supabase Storage
+    try {
+      const pipeline = getActivePipeline();
+      if (pipeline && pipeline.org_id) {
+        const filePath = `${pipeline.org_id}/${pipeline.id}/${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('pipeline_files')
+          .upload(filePath, file, { upsert: true });
+        
+        if (uploadError) {
+          console.error('Supabase upload error:', uploadError);
+          // Non-blocking for local processing, but could throw
+        }
+      }
+    } catch (err) {
+      console.error('Failed to upload to Supabase', err);
+    }
 
     const reader = new FileReader();
 

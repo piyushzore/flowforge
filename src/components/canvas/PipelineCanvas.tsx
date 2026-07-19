@@ -22,6 +22,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { nodeTypes } from './nodes/PipelineNodes';
 import { edgeTypes } from './edges/AnimatedEdge';
 import type { PipelineNode, PipelineEdge, PipelineNodeData, NodeCategory } from '../../types/pipeline';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PipelineCanvasProps {
   nodes: PipelineNode[];
@@ -218,23 +219,29 @@ function CanvasInner({
     return () => window.removeEventListener('keydown', handler);
   }, [nodes, edges, setNodes, setEdges, onSnapshot, onNodeSelect]);
 
+  const { role } = useAuth();
+  const isViewer = role === 'viewer';
+
   return (
     <div ref={reactFlowWrapper} className="flex-1 h-full">
       <ReactFlow
         nodes={nodes as any}
         edges={edges as any}
-        onNodesChange={handleNodesChange as any}
-        onEdgesChange={handleEdgesChange as any}
-        onConnect={handleConnect}
+        onNodesChange={isViewer ? undefined : handleNodesChange as any}
+        onEdgesChange={isViewer ? undefined : handleEdgesChange as any}
+        onConnect={isViewer ? undefined : handleConnect}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
-        onDrop={onDrop}
+        onDrop={isViewer ? undefined : onDrop}
         onDragOver={onDragOver}
         nodeTypes={nodeTypes as any}
         edgeTypes={edgeTypes as any}
         isValidConnection={isValidConnection as any}
         connectionLineType={ConnectionLineType.SmoothStep}
         connectionLineComponent={CustomConnectionLine}
+        nodesDraggable={!isViewer}
+        nodesConnectable={!isViewer}
+        elementsSelectable={true}
         defaultEdgeOptions={{
           type: 'animated',
           animated: false,
@@ -245,7 +252,7 @@ function CanvasInner({
         maxZoom={2}
         snapToGrid
         snapGrid={[15, 15]}
-        deleteKeyCode={null}
+        deleteKeyCode={isViewer ? null : undefined}
         multiSelectionKeyCode="Shift"
         className="canvas-bg"
       >

@@ -150,6 +150,7 @@ export interface PipelineVersion {
 
 export interface Pipeline {
   id: string;
+  org_id?: string;
   name: string;
   description?: string;
   status: PipelineStatus;

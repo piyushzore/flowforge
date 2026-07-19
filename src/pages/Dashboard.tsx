@@ -1,11 +1,23 @@
 import { usePipelineStore } from '../store/pipeline-store';
 import { useConnectorStore } from '../store/connector-store';
-import { Activity, GitBranch, Plug, Play, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Activity, GitBranch, Plug, Play, CheckCircle2, XCircle, Clock, Shield, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Dashboard() {
   const { pipelines, runs } = usePipelineStore();
   const { instances } = useConnectorStore();
+  const { org, role, user } = useAuth();
+  const [memberCount, setMemberCount] = useState(0);
+
+  useEffect(() => {
+    if (org) {
+      supabase.from('org_members').select('*', { count: 'exact', head: true }).eq('org_id', org.id)
+        .then(({ count }) => setMemberCount(count || 0));
+    }
+  }, [org]);
 
   const activePipelines = pipelines.filter(p => p.status === 'active').length;
   
@@ -18,13 +30,25 @@ export default function Dashboard() {
     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Welcome back to FlowForge. Here's what's happening today.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard - {org?.name || 'Workspace'}</h1>
+          <p className="text-sm text-slate-500 mt-1 flex items-center gap-3">
+            <span>Welcome back to FlowForge.</span>
+            {role && (
+              <span className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-2 py-0.5 rounded-full text-xs font-medium">
+                <Shield size={12} /> {role.charAt(0).toUpperCase() + role.slice(1)}
+              </span>
+            )}
+            <Link to="/settings/team" className="flex items-center gap-1 hover:text-blue-600 transition-colors">
+              <Users size={12} /> {memberCount} {memberCount === 1 ? 'member' : 'members'}
+            </Link>
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link to="/pipelines" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
-            Create Pipeline
-          </Link>
+          {role !== 'viewer' && (
+            <Link to="/pipelines" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+              Create Pipeline
+            </Link>
+          )}
         </div>
       </div>
 
