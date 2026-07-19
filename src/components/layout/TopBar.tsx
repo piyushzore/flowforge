@@ -15,6 +15,8 @@ import {
   MessageSquare,
   Info,
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface TopBarProps {
   onToggleTheme: () => void;
@@ -107,28 +109,29 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
                 <span className="font-semibold text-sm text-slate-900 dark:text-white">Notifications</span>
                 <button className="text-xs text-blue-600 hover:text-blue-700">Mark all read</button>
               </div>
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`flex gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}
-                  >
-                    <div className="flex-shrink-0 mt-0.5">{getNotifIcon(n.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!n.read ? 'font-medium text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Notifications</h3>
+                <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">
+                  {unreadCount} new
+                </span>
+              </div>
+              <div className="max-h-[320px] overflow-y-auto">
+                {mockNotifications.map(n => (
+                  <div key={n.id} className={`p-4 flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${!n.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+                    <div className="mt-0.5">
+                      {n.type === 'success' && <CheckCircle2 size={16} className="text-emerald-500" />}
+                      {n.type === 'error' && <AlertCircle size={16} className="text-red-500" />}
+                      {n.type === 'info' && <Info size={16} className="text-blue-500" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white leading-snug">
                         {n.title}
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5 truncate">{n.message}</p>
                       <p className="text-[11px] text-slate-400 mt-1">{n.time}</p>
                     </div>
-                    {!n.read && <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />}
                   </div>
                 ))}
-              </div>
-              <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-800">
-                <button className="text-xs text-blue-600 hover:text-blue-700 font-medium w-full text-center">
-                  View all notifications
-                </button>
               </div>
             </div>
           )}
@@ -140,17 +143,17 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
             onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false); }}
             className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
-            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-              A
+            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-violet-500 rounded-full flex items-center justify-center text-white text-xs font-bold uppercase">
+              {userInitials}
             </div>
             <ChevronDown size={14} className="text-slate-400" />
           </button>
 
           {profileOpen && (
             <div className="absolute right-0 top-11 w-56 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl animate-slide-in-up z-50 py-1">
-              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                <p className="font-medium text-sm text-slate-900 dark:text-white">Alex Chen</p>
-                <p className="text-xs text-slate-500 mt-0.5">alex@flowforge.io</p>
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 overflow-hidden">
+                <p className="font-medium text-sm text-slate-900 dark:text-white truncate">{user?.email?.split('@')[0] || 'User'}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">{user?.email}</p>
               </div>
               <div className="py-1">
                 <button
@@ -167,7 +170,10 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
                 </button>
               </div>
               <div className="border-t border-slate-100 dark:border-slate-800 py-1">
-                <button className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                <button 
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                >
                   <LogOut size={15} /> Sign out
                 </button>
               </div>
