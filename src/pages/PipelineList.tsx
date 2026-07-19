@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function PipelineList() {
-  const { pipelines, createPipeline, deletePipeline, duplicatePipeline, activatePipeline, pausePipeline } = usePipelineStore();
+  const { pipelines, createPipeline, deletePipeline, duplicatePipeline, activatePipeline, pausePipeline, savePipeline } = usePipelineStore();
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
@@ -13,8 +13,9 @@ export default function PipelineList() {
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const id = createPipeline('New Pipeline');
+    await savePipeline(id);
     navigate(`/pipelines/${id}`);
   };
 

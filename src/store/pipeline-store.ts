@@ -104,14 +104,14 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   },
   
   createPipeline: (name) => {
-    const id = `p-${Date.now()}`;
+    const id = crypto.randomUUID();
     const newPipeline: Pipeline = {
       id,
       name,
       description: '',
       status: 'draft',
-      workspaceId: 'ws-1',
-      createdBy: 'u-1',
+      workspaceId: '',
+      createdBy: '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       currentVersionIndex: 0,
