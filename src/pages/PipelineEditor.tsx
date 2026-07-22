@@ -244,7 +244,7 @@ export default function PipelineEditor() {
         </div>
 
         {configPanelOpen && selectedNode && (
-          <div className="w-80 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0 animate-slide-in-right z-20 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)]">
+          <div className="border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0 animate-slide-in-right z-20 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] overflow-hidden">
             <ConfigPanel
               nodeId={selectedNode.id}
               nodeData={selectedNode.data}

@@ -169,7 +169,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
   }
 
   return (
-    <div className="w-[420px] bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full animate-slide-in-right">
+    <div className="w-80 xl:w-96 bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full flex-shrink-0 overflow-hidden animate-slide-in-right">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">

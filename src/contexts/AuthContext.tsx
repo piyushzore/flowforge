@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { usePipelineStore } from '../store/pipeline-store';
 
 interface Org {
   id: string;
@@ -69,11 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    const { loadAllPipelines } = usePipelineStore.getState();
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchOrgDetails(session.user.id).then(() => setLoading(false));
+        fetchOrgDetails(session.user.id).then(() => {
+          setLoading(false);
+          loadAllPipelines();
+        });
       } else {
         setLoading(false);
       }
@@ -84,9 +90,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       if (session?.user) {
         await fetchOrgDetails(session.user.id);
+        loadAllPipelines();
       } else {
         setOrg(null);
         setRole(null);
+        usePipelineStore.setState({ pipelines: [], activePipelineId: null });
       }
       setLoading(false);
     });
