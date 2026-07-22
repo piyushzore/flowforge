@@ -220,7 +220,7 @@ export default function PipelineEditor() {
       <div className="flex-1 flex overflow-hidden relative">
         <NodePalette className="z-10" />
         
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-w-0">
           <PipelineCanvas
             nodes={pipeline.nodes}
             edges={pipeline.edges}

@@ -69,9 +69,12 @@ export async function executePipelineLocal(
               if (val === undefined) return false;
               switch (cond.operator) {
                 case 'equals': return val == cond.value;
+                case 'not-equals': return val != cond.value;
                 case 'contains': return String(val).toLowerCase().includes(String(cond.value).toLowerCase());
-                case 'greater_than': return Number(val) > Number(cond.value);
-                case 'less_than': return Number(val) < Number(cond.value);
+                case 'greater-than': return Number(val) > Number(cond.value);
+                case 'less-than': return Number(val) < Number(cond.value);
+                case 'is-null': return val === null || val === undefined || val === '';
+                case 'is-not-null': return val !== null && val !== undefined && val !== '';
                 default: return true;
               }
             });
