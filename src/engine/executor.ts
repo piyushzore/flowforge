@@ -120,6 +120,46 @@ export async function executePipelineLocal(
                  });
               });
            }
+        } else if (subType.startsWith('scd-type-')) {
+           const scdConfig = node.data.scdConfig;
+           if (scdConfig && scdConfig.primaryKey) {
+             const pk = scdConfig.primaryKey;
+             const trackCols = scdConfig.trackColumns || [];
+             const overwriteCols = scdConfig.overwriteColumns || [];
+             
+             // In a real execution environment, this would hit the DB.
+             // Here we simulate the logic in-memory.
+             
+             if (subType === 'scd-type-0') {
+               // Pass-through
+               outputData = [...outputData];
+             } else if (subType === 'scd-type-1') {
+               // Overwrite
+               // Simulated: we just pass data through since we have no DB state to overwrite
+               outputData = [...outputData];
+             } else if (subType === 'scd-type-2') {
+               // Add history
+               outputData = outputData.map((row: any) => ({
+                 ...row,
+                 ...(scdConfig.autoColumns?.effectiveDate ? { effective_date: new Date().toISOString() } : {}),
+                 ...(scdConfig.autoColumns?.endDate ? { end_date: null } : {}),
+                 ...(scdConfig.autoColumns?.isCurrent ? { is_current: true } : {}),
+                 ...(scdConfig.autoColumns?.version ? { version: 1 } : {})
+               }));
+             } else if (subType === 'scd-type-3') {
+               // Previous value columns
+               outputData = outputData.map((row: any) => {
+                 const newRow = { ...row };
+                 trackCols.forEach(col => {
+                   newRow[`previous_${col}`] = null; // Simulated initial state
+                 });
+                 return newRow;
+               });
+             } else {
+               // Types 4, 5, 6 - pass through for now
+               outputData = [...outputData];
+             }
+           }
         }
 
         results.set(nodeId, outputData);

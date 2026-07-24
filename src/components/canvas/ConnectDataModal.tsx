@@ -4,6 +4,7 @@ import {
   AlertCircle, CheckCircle2, RefreshCw, Layers, ShieldCheck, Check
 } from 'lucide-react';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { useUIStore } from '../../store/ui-store';
 import { usePipelineStore } from '../../store/pipeline-store';
 import { supabase } from '../../lib/supabase';
@@ -248,7 +249,33 @@ export default function ConnectDataModal() {
 
     reader.onload = (event) => {
       try {
-        const text = event.target?.result as string;
+        const result = event.target?.result;
+        
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+          const workbook = XLSX.read(result, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const dataRows = XLSX.utils.sheet_to_json(worksheet) as any[];
+          
+          if (dataRows.length === 0) {
+            setTesting(false);
+            setTestResult('error');
+            setErrorMessage('Excel file contains no data rows.');
+            return;
+          }
+          const headers = Object.keys(dataRows[0]);
+          setSchemaFields(headers.map(h => ({
+            name: h,
+            type: inferType(dataRows[0][h])
+          })));
+          setRowCount(dataRows.length);
+          setPreviewRows(dataRows);
+          setTesting(false);
+          setTestResult('success');
+          return;
+        }
+
+        const text = result as string;
 
         if (file.name.endsWith('.json')) {
           // Parse JSON files
@@ -323,7 +350,11 @@ export default function ConnectDataModal() {
       setErrorMessage('Failed to read file. Please try again.');
     };
 
-    reader.readAsText(file);
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   const triggerFileSelect = () => {

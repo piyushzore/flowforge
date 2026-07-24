@@ -39,6 +39,7 @@ import {
   Play,
   RefreshCw,
 } from 'lucide-react';
+import SCDConfigContent from './SCDConfigPanel';
 import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
 import { usePipelineStore } from '../../store/pipeline-store';
 
@@ -110,6 +111,14 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <SortConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'deduplicate':
         return <DeduplicateConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
+      case 'scd-type-0':
+      case 'scd-type-1':
+      case 'scd-type-2':
+      case 'scd-type-3':
+      case 'scd-type-4':
+      case 'scd-type-5':
+      case 'scd-type-6':
+        return <SCDConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
       case 'schedule':
         return <ScheduleConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
       case 'quality-check':

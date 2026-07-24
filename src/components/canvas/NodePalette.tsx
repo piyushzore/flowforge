@@ -62,6 +62,15 @@ const paletteItems: PaletteItem[] = [
   { subType: 'validation', label: 'Validation', category: 'transform', description: 'Validate data quality', icon: <Shield size={15} /> },
   { subType: 'ai-transform', label: 'AI Transform', category: 'transform', description: 'Transform with plain English', icon: <Bot size={15} /> },
   { subType: 'custom-code', label: 'Custom Code', category: 'transform', description: 'Python or SQL script', icon: <Terminal size={15} /> },
+  
+  // SCD Transforms
+  { subType: 'scd-type-0', label: 'SCD Type 0', category: 'transform', description: 'No change (pass-through)', icon: <Layers size={15} /> },
+  { subType: 'scd-type-1', label: 'SCD Type 1', category: 'transform', description: 'Overwrite old values', icon: <Layers size={15} /> },
+  { subType: 'scd-type-2', label: 'SCD Type 2', category: 'transform', description: 'Add new row (history)', icon: <Layers size={15} /> },
+  { subType: 'scd-type-3', label: 'SCD Type 3', category: 'transform', description: 'Add previous value column', icon: <Layers size={15} /> },
+  { subType: 'scd-type-4', label: 'SCD Type 4', category: 'transform', description: 'Separate history table', icon: <Layers size={15} /> },
+  { subType: 'scd-type-5', label: 'SCD Type 5', category: 'transform', description: 'Hybrid (1 + 2)', icon: <Layers size={15} /> },
+  { subType: 'scd-type-6', label: 'SCD Type 6', category: 'transform', description: 'Hybrid (1 + 2 + 3)', icon: <Layers size={15} /> },
 
   // Validation
   { subType: 'quality-check', label: 'Quality Check', category: 'validation', description: 'Data validation rules', icon: <Shield size={15} /> },
