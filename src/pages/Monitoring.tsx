@@ -1,11 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { Search, Filter, Calendar, Play, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, Filter, Calendar, Play, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { supabase } from '../lib/supabase';
 
 export default function Monitoring() {
-  const { runs } = usePipelineStore();
+  const { runs, loadRuns } = usePipelineStore();
   const [search, setSearch] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadRuns();
+
+    // Subscribe to real-time run updates
+    const channel = supabase
+      .channel('pipeline_runs_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pipeline_runs' },
+        () => {
+          loadRuns();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadRuns]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadRuns();
+    setIsRefreshing(false);
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in h-full flex flex-col">

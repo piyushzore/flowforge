@@ -70,7 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const { loadAllPipelines } = usePipelineStore.getState();
+    const { loadAllPipelines, loadRuns } = usePipelineStore.getState();
+    const { loadInstances } = useConnectorStore.getState();
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -79,6 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchOrgDetails(session.user.id).then(() => {
           setLoading(false);
           loadAllPipelines();
+          loadInstances();
+          loadRuns();
         });
       } else {
         setLoading(false);
@@ -91,10 +94,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         await fetchOrgDetails(session.user.id);
         loadAllPipelines();
+        loadInstances();
+        loadRuns();
       } else {
         setOrg(null);
         setRole(null);
         usePipelineStore.setState({ pipelines: [], activePipelineId: null });
+        useConnectorStore.setState({ instances: [] });
       }
       setLoading(false);
     });

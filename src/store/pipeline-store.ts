@@ -64,7 +64,8 @@ interface PipelineState {
   _runTimers: number[];
   
   runs: PipelineRun[];
-  addRun: (run: PipelineRun) => void;
+  loadRuns: () => Promise<void>;
+  addRun: (run: PipelineRun) => Promise<void>;
   
   saveVersion: (pipelineId: string, name?: string) => void;
   restoreVersion: (pipelineId: string, versionIndex: number) => void;
@@ -361,7 +362,72 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   startRun: (pipelineId) => get().startTestRun(pipelineId),
   
   runs: [],
-  addRun: (run) => set(state => ({ runs: [run, ...state.runs] })),
+  loadRuns: async () => {
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data, error } = await supabase
+        .from('pipeline_runs')
+        .select('*')
+        .order('started_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.warn('Failed to load runs from Supabase, relying on cache:', error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const mappedRuns: PipelineRun[] = data.map((r: any) => ({
+          id: r.id,
+          pipelineId: r.pipeline_id,
+          pipelineName: r.pipeline_name,
+          status: r.status,
+          trigger: r.trigger,
+          startedAt: r.started_at,
+          completedAt: r.completed_at,
+          duration: r.duration,
+          rowsIn: r.rows_in,
+          rowsOut: r.rows_out,
+          error: r.error,
+          nodeResults: r.node_results || []
+        }));
+        set({ runs: mappedRuns });
+      }
+    } catch (err) {
+      console.warn('Error fetching runs:', err);
+    }
+  },
+  addRun: async (run) => {
+    set(state => ({ runs: [run, ...state.runs] }));
+
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data: userData } = await supabase.auth.getUser();
+      let orgId: string | null = null;
+      if (userData?.user) {
+        const { data: uData } = await supabase.from('users').select('org_id').eq('id', userData.user.id).single();
+        if (uData) orgId = uData.org_id;
+      }
+
+      await supabase.from('pipeline_runs').insert({
+        id: run.id,
+        pipeline_id: run.pipelineId,
+        pipeline_name: run.pipelineName,
+        org_id: orgId,
+        status: run.status,
+        trigger: run.trigger,
+        started_at: run.startedAt,
+        completed_at: run.completedAt,
+        duration: run.duration || 0,
+        rows_in: run.rowsIn || 0,
+        rows_out: run.rowsOut || 0,
+        error: run.error || null,
+        node_results: run.nodeResults || []
+      });
+    } catch (err) {
+      console.warn('Failed to persist pipeline run to Supabase:', err);
+    }
+  },
   
   saveVersion: (pipelineId, name) => {
     const pipeline = get().pipelines.find(p => p.id === pipelineId);
