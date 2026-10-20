@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { usePipelineStore } from '../store/pipeline-store';
+import { useConnectorStore } from '../store/connector-store';
 
 interface Org {
   id: string;
