@@ -123,6 +123,10 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <ScheduleConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
       case 'quality-check':
         return <QualityCheckConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
+      case 'ai-transform':
+        return <AITransformConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} sampleData={previewDataToRender} />;
+      case 'custom-code':
+        return <CustomCodeConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
       default:
         if (nodeData.category === 'source' || nodeData.category === 'destination') {
           return <ConnectionConfigContent nodeId={nodeId} nodeData={nodeData} onUpdate={onUpdate} />;
@@ -1049,3 +1053,266 @@ function QualityCheckConfigContent({ nodeData, onUpdate, fields }: { nodeData: P
     </div>
   );
 }
+
+
+// ─── AI Transform Config ──────────────────────────────────────────────────────
+
+import { createClient } from '@supabase/supabase-js';
+
+const _supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+function AITransformConfigContent({
+  nodeData,
+  onUpdate,
+  fields,
+  sampleData,
+}: {
+  nodeData: PipelineNodeData;
+  onUpdate: (d: Partial<PipelineNodeData>) => void;
+  fields: FieldSchema[];
+  sampleData: Record<string, unknown>[];
+}) {
+  const [instruction, setInstruction] = React.useState<string>(
+    (nodeData.config?.aiInstruction as string) || ''
+  );
+  const [generatedCode, setGeneratedCode] = React.useState<string>(
+    (nodeData.config?.generatedCode as string) || ''
+  );
+  const [explanation, setExplanation] = React.useState<string>(
+    (nodeData.config?.aiExplanation as string) || ''
+  );
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [previewResult, setPreviewResult] = React.useState<Record<string, unknown>[]>([]);
+
+  const handleGenerate = async () => {
+    if (!instruction.trim()) return;
+    setLoading(true);
+    setError('');
+    setGeneratedCode('');
+    setExplanation('');
+    setPreviewResult([]);
+
+    try {
+      const { data, error: fnErr } = await _supabase.functions.invoke('ai-transform', {
+        body: {
+          instruction,
+          schema: fields.map(f => ({ name: f.name, type: f.type })),
+          sampleData: sampleData.slice(0, 20),
+        },
+      });
+
+      if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
+
+      setGeneratedCode(data.code || '');
+      setExplanation(data.explanation || '');
+      setPreviewResult(data.previewData || []);
+
+      onUpdate({
+        config: {
+          ...(nodeData.config || {}),
+          aiInstruction: instruction,
+          generatedCode: data.code,
+          aiExplanation: data.explanation,
+        },
+        configured: true,
+      });
+    } catch (e: any) {
+      setError(e.message || 'Failed to generate transform');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Instruction */}
+      <div>
+        <label className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Bot size={13} className="text-blue-500" />
+          Transformation Instruction
+        </label>
+        <textarea
+          value={instruction}
+          onChange={e => setInstruction(e.target.value)}
+          placeholder="e.g. Filter rows where revenue > 1000, add a 'revenue_tier' column based on revenue, and calculate percentage of total..."
+          rows={4}
+          className="w-full text-[12px] px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400"
+        />
+      </div>
+
+      {/* Schema hint */}
+      {fields.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {fields.map(f => (
+            <span key={f.name} className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded font-mono">
+              {f.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={handleGenerate}
+        disabled={!instruction.trim() || loading}
+        className="w-full py-2 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-semibold rounded-xl transition-all shadow-sm"
+      >
+        {loading ? (
+          <>
+            <Loader2 size={13} className="animate-spin" /> Generating...
+          </>
+        ) : (
+          <>
+            <Bot size={13} /> Generate Transform
+          </>
+        )}
+      </button>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-xl text-[11px] text-red-700 dark:text-red-400">
+          ❌ {error}
+        </div>
+      )}
+
+      {explanation && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+          <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-1">✅ What this does</p>
+          <p className="text-[12px] text-emerald-800 dark:text-emerald-300">{explanation}</p>
+        </div>
+      )}
+
+      {generatedCode && (
+        <div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Generated Code</p>
+          <pre className="text-[10px] bg-slate-900 text-emerald-400 p-3 rounded-xl overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed border border-slate-800">
+            {generatedCode}
+          </pre>
+        </div>
+      )}
+
+      {previewResult.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Preview ({previewResult.length} rows)</p>
+          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+            <table className="w-full text-[10px]">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900">
+                  {Object.keys(previewResult[0]).slice(0, 5).map(k => (
+                    <th key={k} className="px-2 py-1.5 text-left font-semibold text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">{k}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {previewResult.slice(0, 5).map((row, i) => (
+                  <tr key={i} className="border-b border-slate-100 dark:border-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                    {Object.values(row).slice(0, 5).map((v, j) => (
+                      <td key={j} className="px-2 py-1.5 text-slate-700 dark:text-slate-300 font-mono truncate max-w-[80px]">
+                        {String(v ?? '')}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Custom Code Config ───────────────────────────────────────────────────────
+
+function CustomCodeConfigContent({
+  nodeData,
+  onUpdate,
+}: {
+  nodeData: PipelineNodeData;
+  onUpdate: (d: Partial<PipelineNodeData>) => void;
+}) {
+  const [language, setLanguage] = React.useState<'javascript' | 'sql'>(
+    (nodeData.config?.language as 'javascript' | 'sql') || 'javascript'
+  );
+  const [code, setCode] = React.useState<string>(
+    (nodeData.config?.code as string) ||
+      (language === 'javascript'
+        ? '// rows: array of objects\n// Return transformed array\nfunction transform(rows) {\n  return rows.filter(r => r != null);\n}'
+        : 'SELECT *\nFROM input\nWHERE 1=1')
+  );
+
+  const handleSave = () => {
+    onUpdate({
+      config: { ...(nodeData.config || {}), code, language },
+      configured: true,
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Language Selector */}
+      <div>
+        <label className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Terminal size={13} className="text-violet-500" />
+          Language
+        </label>
+        <div className="flex gap-2">
+          {(['javascript', 'sql'] as const).map(lang => (
+            <button
+              key={lang}
+              onClick={() => {
+                setLanguage(lang);
+                if (lang === 'javascript' && !code.includes('function')) {
+                  setCode('// rows: array of objects\n// Return transformed array\nfunction transform(rows) {\n  return rows.filter(r => r != null);\n}');
+                } else if (lang === 'sql' && !code.includes('SELECT')) {
+                  setCode('SELECT *\nFROM input\nWHERE 1=1');
+                }
+              }}
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
+                language === lang
+                  ? 'bg-violet-600 text-white shadow-sm'
+                  : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+              }`}
+            >
+              {lang === 'javascript' ? '⚡ JavaScript' : '🗄 SQL'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Code Editor */}
+      <div>
+        <label className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">Code</label>
+        <textarea
+          value={code}
+          onChange={e => setCode(e.target.value)}
+          rows={12}
+          spellCheck={false}
+          className="w-full text-[11px] font-mono px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-900 text-emerald-400 placeholder:text-slate-600 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 leading-relaxed"
+        />
+      </div>
+
+      <button
+        onClick={handleSave}
+        className="w-full py-2 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-[12px] font-semibold rounded-xl transition-all shadow-sm"
+      >
+        <CheckCircle2 size={13} /> Save Code
+      </button>
+
+      {nodeData.configured && (
+        <div className="p-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] text-emerald-700 dark:text-emerald-400 text-center">
+          ✅ Code saved — will execute during pipeline run
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Loader2 import shim (already imported via lucide-react in parent) ────────
+const Loader2 = ({ size, className }: { size: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);

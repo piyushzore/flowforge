@@ -3,11 +3,12 @@ import PipelineCanvas from '../components/canvas/PipelineCanvas';
 import NodePalette from '../components/canvas/NodePalette';
 import ConfigPanel from '../components/canvas/ConfigPanel';
 import RunControlPanel from '../components/canvas/RunControlPanel';
+import AIChat from '../components/AIChat';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
 import {
   Play, Square, Save, History, Settings, MousePointer2,
-  Layers, Cpu, Radio, Code, X, Copy
+  Layers, Cpu, Radio, Code, X, Copy, Sparkles
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
 import type { ProcessingMode } from '../store/pipeline-store';
@@ -50,6 +51,7 @@ export default function PipelineEditor() {
   } = useUIStore();
 
   const [exportCodeOpen, setExportCodeOpen] = React.useState(false);
+  const [aiChatOpen, setAiChatOpen] = React.useState(false);
 
   const pipeline = getActivePipeline();
 
@@ -66,6 +68,9 @@ export default function PipelineEditor() {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
         e.preventDefault();
         if (pipeline && canRedo(pipeline.id)) redo(pipeline.id);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+        e.preventDefault();
+        setAiChatOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -154,6 +159,18 @@ export default function PipelineEditor() {
             </button>
           </div>
 
+          <button
+            onClick={() => setAiChatOpen(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all ${
+              aiChatOpen
+                ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="AI Pipeline Designer (⌘J)"
+          >
+            <Sparkles size={14} />
+            AI Design
+          </button>
           <button onClick={() => setExportCodeOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
             <Code size={14} />
             Export Code
@@ -293,6 +310,9 @@ export default function PipelineEditor() {
           </div>
         </div>
       )}
+
+      {/* AI Chat Panel */}
+      <AIChat open={aiChatOpen} onClose={() => setAiChatOpen(false)} />
     </div>
   );
 }
