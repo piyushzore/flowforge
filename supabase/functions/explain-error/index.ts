@@ -1,15 +1,13 @@
-import { corsHeaders } from '../_shared/cors.ts'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
-interface ExplainErrorRequest {
-  nodeName: string
-  nodeType: string
-  error: string
-  config?: Record<string, unknown>
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -23,7 +21,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const body: ExplainErrorRequest = await req.json()
+    const body = await req.json()
     const { nodeName, nodeType, error, config = {} } = body
 
     const systemPrompt = `You are a helpful data engineering assistant for FlowForge.
@@ -32,12 +30,10 @@ A pipeline node has failed. Explain the error in plain English and provide a con
 Return ONLY valid JSON with keys:
 - "summary": 1-sentence plain-English explanation of what went wrong
 - "cause": 2-3 sentences explaining the technical cause
-- "fix": numbered list of specific steps to fix it (as an array of strings)
+- "fix": array of strings - numbered steps to fix it
 - "severity": "low" | "medium" | "high"`
 
-    const userMessage = `Node: "${nodeName}" (type: ${nodeType})
-Error: ${error}
-Config: ${JSON.stringify(config, null, 2)}`
+    const userMessage = `Node: "${nodeName}" (type: ${nodeType})\nError: ${error}\nConfig: ${JSON.stringify(config, null, 2)}`
 
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',

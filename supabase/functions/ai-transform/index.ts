@@ -1,16 +1,14 @@
-import { corsHeaders } from '../_shared/cors.ts'
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
-interface TransformRequest {
-  instruction: string
-  schema?: { name: string; type: string }[]
-  sampleData?: Record<string, unknown>[]
-}
-
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -22,18 +20,18 @@ Deno.serve(async (req) => {
       })
     }
 
-    const body: TransformRequest = await req.json()
+    const body = await req.json()
     const { instruction, schema = [], sampleData = [] } = body
 
     const schemaText = schema.length
-      ? `Input schema:\n${schema.map(f => `  - ${f.name} (${f.type})`).join('\n')}`
+      ? `Input schema:\n${schema.map((f: any) => `  - ${f.name} (${f.type})`).join('\n')}`
       : 'Schema not provided.'
 
     const sampleText = sampleData.length
       ? `Sample rows (first 3):\n${JSON.stringify(sampleData.slice(0, 3), null, 2)}`
       : ''
 
-    const systemPrompt = `You are a data transformation code generator for FlowForge, a data engineering platform.
+    const systemPrompt = `You are a data transformation code generator for FlowForge.
 Given a user instruction and input schema, generate a JavaScript arrow function that transforms an array of row objects.
 
 RULES:
@@ -42,68 +40,47 @@ RULES:
 - "explanation" should be 1-2 sentences describing what the transform does
 - Do NOT use any imports or require()
 - The function receives rows as an array of plain objects
-- Keep the function concise and correct
 - Do NOT wrap in markdown code blocks
 
 Example output:
 {"code":"(rows) => rows.filter(r => r.age > 18)","explanation":"Filters out rows where age is 18 or below."}`
 
-    const userMessage = `Instruction: ${instruction}
+    const userMessage = `Instruction: ${instruction}\n\n${schemaText}\n\n${sampleText}\n\nGenerate the transformation function.`
 
-${schemaText}
-
-${sampleText}
-
-Generate the transformation function.`
-
-    const response = await fetch(GROQ_API_URL, {
+    const groqRes = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${groqKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-120b',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
-        temperature: 0.2,
-        max_tokens: 600,
         response_format: { type: 'json_object' },
       }),
     })
 
-    if (!response.ok) {
-      const errText = await response.text()
+    if (!groqRes.ok) {
+      const errText = await groqRes.text()
       return new Response(JSON.stringify({ error: `Groq API error: ${errText}` }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const data = await response.json()
+    const data = await groqRes.json()
     const content = data.choices?.[0]?.message?.content || '{}'
     const parsed = JSON.parse(content)
 
-    // Apply function to sample data to get preview
-    let previewData: unknown[] = []
-    if (sampleData.length && parsed.code) {
-      try {
-        // eslint-disable-next-line no-new-func
-        const fn = new Function('rows', `return (${parsed.code})(rows)`)
-        previewData = fn(sampleData.slice(0, 20))
-      } catch (_e) {
-        previewData = []
-      }
-    }
-
     return new Response(
-      JSON.stringify({ code: parsed.code, explanation: parsed.explanation, previewData }),
+      JSON.stringify({ code: parsed.code, explanation: parsed.explanation, previewData: [] }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-  } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message || String(err) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

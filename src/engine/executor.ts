@@ -416,6 +416,33 @@ export async function executePipelineLocal(
             }
           }
         }
+        // 15. AI TRANSFORM
+        else if (subType === 'ai-transform') {
+          const generatedCode = node.data.config?.generatedCode as string | undefined;
+          if (generatedCode) {
+            try {
+              const fn = new Function('rows', `return (${generatedCode})(rows)`);
+              const res = fn(outputData);
+              if (Array.isArray(res)) outputData = res;
+            } catch (err: any) {
+              console.error('AI transform runtime error:', err);
+            }
+          }
+        }
+        // 16. CUSTOM CODE
+        else if (subType === 'custom-code') {
+          const code = node.data.config?.code as string | undefined;
+          const language = node.data.config?.language || 'javascript';
+          if (code && language === 'javascript') {
+            try {
+              const fn = new Function('rows', `${code}\nif (typeof transform === 'function') return transform(rows); return rows;`);
+              const res = fn(outputData);
+              if (Array.isArray(res)) outputData = res;
+            } catch (err: any) {
+              console.error('Custom code execution error:', err);
+            }
+          }
+        }
 
         results.set(nodeId, outputData);
         onNodeComplete(nodeId, outputData);

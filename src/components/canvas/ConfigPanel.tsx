@@ -1057,12 +1057,7 @@ function QualityCheckConfigContent({ nodeData, onUpdate, fields }: { nodeData: P
 
 // ─── AI Transform Config ──────────────────────────────────────────────────────
 
-import { createClient } from '@supabase/supabase-js';
-
-const _supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { generateTransformWithAI } from '../../lib/ai-service';
 
 function AITransformConfigContent({
   nodeData,
@@ -1097,26 +1092,22 @@ function AITransformConfigContent({
     setPreviewResult([]);
 
     try {
-      const { data, error: fnErr } = await _supabase.functions.invoke('ai-transform', {
-        body: {
-          instruction,
-          schema: fields.map(f => ({ name: f.name, type: f.type })),
-          sampleData: sampleData.slice(0, 20),
-        },
-      });
+      const result = await generateTransformWithAI(
+        instruction,
+        fields,
+        sampleData
+      );
 
-      if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
-
-      setGeneratedCode(data.code || '');
-      setExplanation(data.explanation || '');
-      setPreviewResult(data.previewData || []);
+      setGeneratedCode(result.code || '');
+      setExplanation(result.explanation || '');
+      setPreviewResult(result.previewData || []);
 
       onUpdate({
         config: {
           ...(nodeData.config || {}),
           aiInstruction: instruction,
-          generatedCode: data.code,
-          aiExplanation: data.explanation,
+          generatedCode: result.code,
+          aiExplanation: result.explanation,
         },
         configured: true,
       });

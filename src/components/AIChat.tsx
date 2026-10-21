@@ -1,13 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, X, Send, Sparkles, Loader2, CheckCircle2, AlertCircle, ChevronDown, Wand2 } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Loader2, CheckCircle2, AlertCircle, ChevronDown, Wand2, Key } from 'lucide-react';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { generatePipelineWithAI, getGroqApiKey, setGroqApiKey } from '../lib/ai-service';
 
 interface Message {
   id: string;
@@ -40,6 +35,8 @@ export default function AIChat({ open, onClose }: AIChatProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKey, setApiKeyState] = useState<string>(getGroqApiKey());
+  const [showKeyInput, setShowKeyInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { activePipelineId, pipelines, setNodes, setEdges, addNode, addEdge } = usePipelineStore();
@@ -71,15 +68,7 @@ export default function AIChat({ open, onClose }: AIChatProps) {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-pipeline', {
-        body: { prompt },
-      });
-
-      if (error || data?.error) {
-        throw new Error(error?.message || data?.error || 'Failed to generate pipeline');
-      }
-
-      const { nodes, edges, message } = data;
+      const { nodes, edges, message } = await generatePipelineWithAI(prompt);
 
       // Add nodes and edges to active pipeline
       if (activePipelineId && nodes?.length) {
@@ -91,22 +80,13 @@ export default function AIChat({ open, onClose }: AIChatProps) {
           setEdges(activePipelineId, edges);
         } else {
           // Canvas has nodes — offset new nodes and append
-          const offsetX = pipeline ? Math.max(...pipeline.nodes.map(n => n.position.x), 0) + 400 : 0;
-          const offsetNodes = nodes.map((n: any) => ({
+          const offsetX = pipeline ? Math.max(...pipeline.nodes.map(n => n.position.x), 0) + 350 : 0;
+          const offsetNodes = nodes.map((n: any, idx: number) => ({
             ...n,
-            id: `gen-${Date.now()}-${n.id}`,
             position: { x: n.position.x + offsetX, y: n.position.y },
           }));
-          const idMap: Record<string, string> = {};
-          nodes.forEach((n: any, i: number) => { idMap[n.id] = offsetNodes[i].id; });
-          const offsetEdges = edges.map((e: any, i: number) => ({
-            ...e,
-            id: `gen-edge-${Date.now()}-${i}`,
-            source: idMap[e.source] || e.source,
-            target: idMap[e.target] || e.target,
-          }));
           offsetNodes.forEach((n: any) => addNode(activePipelineId, n));
-          offsetEdges.forEach((e: any) => addEdge(activePipelineId, e));
+          edges.forEach((e: any) => addEdge(activePipelineId, e));
         }
       }
 
@@ -128,7 +108,7 @@ export default function AIChat({ open, onClose }: AIChatProps) {
           m.id === asstMsgId
             ? {
                 ...m,
-                content: `❌ ${err.message || 'Something went wrong. Please try again.'}`,
+                content: `❌ ${err.message || 'Something went wrong. Please check your Groq API key and try again.'}`,
                 status: 'error',
               }
             : m
@@ -161,13 +141,52 @@ export default function AIChat({ open, onClose }: AIChatProps) {
             <p className="text-[10px] text-blue-200">Powered by Groq · Llama 3.3 70B</p>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
-        >
-          <X size={15} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowKeyInput(!showKeyInput)}
+            className={`p-1.5 rounded-lg transition-colors ${showKeyInput || !apiKey ? 'bg-white/30 text-amber-200' : 'hover:bg-white/20 text-white'}`}
+            title="Configure Groq API Key"
+          >
+            <Key size={14} />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
+          >
+            <X size={15} />
+          </button>
+        </div>
       </div>
+
+      {/* Groq Key Configuration Banner */}
+      {(showKeyInput || !apiKey) && (
+        <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-700 text-xs text-slate-200">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="font-semibold text-amber-400 flex items-center gap-1">
+              <Key size={12} /> Groq API Key
+            </span>
+            <span className="text-[10px] text-slate-400">Stored in browser localStorage</span>
+          </div>
+          <div className="flex gap-1.5">
+            <input
+              type="password"
+              placeholder="gsk_..."
+              value={apiKey}
+              onChange={(e) => setApiKeyState(e.target.value)}
+              className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <button
+              onClick={() => {
+                setGroqApiKey(apiKey.trim());
+                setShowKeyInput(false);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-xs font-medium"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 max-h-[400px]">
