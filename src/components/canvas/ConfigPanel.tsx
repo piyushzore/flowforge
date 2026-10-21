@@ -129,7 +129,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <CustomCodeConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
       default:
         if (nodeData.category === 'source' || nodeData.category === 'destination') {
-          return <ConnectionConfigContent nodeId={nodeId} nodeData={nodeData} onUpdate={onUpdate} />;
+          return <ConnectionConfigContent nodeId={nodeId} nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
         }
         return <GenericConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
     }
@@ -788,7 +788,7 @@ function ScheduleConfigContent({ nodeData, onUpdate }: { nodeData: PipelineNodeD
 
 import { useUIStore } from '../../store/ui-store';
 
-function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: string; nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void }) {
+function ConnectionConfigContent({ nodeId, nodeData, onUpdate, fields = [] }: { nodeId: string; nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields?: FieldSchema[] }) {
   const isSource = nodeData.category === 'source';
   const isDestination = nodeData.category === 'destination';
   const openModal = useUIStore(s => s.openModal);
@@ -881,7 +881,51 @@ function ConnectionConfigContent({ nodeId, nodeData, onUpdate }: { nodeId: strin
           </div>
           
           {isDestination && (
-            <div className="pt-2 border-t border-emerald-100 dark:border-emerald-900">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <Columns size={12} className="text-violet-500" /> Destination Column Mapping
+                </span>
+                <span className="text-[9px] bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 px-1.5 py-0.5 rounded font-medium">
+                  {nodeData.config?.syncMode ? String(nodeData.config.syncMode).toUpperCase() : 'APPEND'}
+                </span>
+              </div>
+
+              {/* Sync Mode selector */}
+              <div className="flex gap-1.5 text-[10px]">
+                {(['append', 'upsert', 'overwrite'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => onUpdate({
+                      config: { ...(nodeData.config || {}), syncMode: mode }
+                    })}
+                    className={`flex-1 py-1 rounded font-medium capitalize transition-colors ${
+                      (nodeData.config?.syncMode || 'append') === mode
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+
+              {/* Detected incoming columns */}
+              {fields.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Field Mappings:</p>
+                  <div className="max-h-[140px] overflow-y-auto space-y-1 pr-1">
+                    {fields.slice(0, 8).map((f, i) => (
+                      <div key={i} className="flex items-center justify-between text-[11px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2 py-1 rounded">
+                        <span className="font-mono text-slate-700 dark:text-slate-300 truncate max-w-[100px]">{f.name}</span>
+                        <span className="text-slate-400">→</span>
+                        <span className="font-mono text-emerald-600 dark:text-emerald-400 truncate max-w-[100px]">{f.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={handleExportCSV}
                 className="w-full py-1.5 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition-all shadow-sm"
