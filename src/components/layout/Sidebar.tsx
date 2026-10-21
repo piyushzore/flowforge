@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Network,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface NavItem {
@@ -29,6 +31,8 @@ const navItems: NavItem[] = [
   { id: 'pipelines', label: 'Pipelines', icon: <GitBranch size={20} />, path: '/pipelines' },
   { id: 'connectors', label: 'Connectors', icon: <Plug size={20} />, path: '/connectors' },
   { id: 'transforms', label: 'Transforms', icon: <Layers size={20} />, path: '/transforms' },
+  { id: 'lineage', label: 'Lineage', icon: <Network size={20} />, path: '/lineage' },
+  { id: 'data-quality', label: 'Data Quality', icon: <ShieldCheck size={20} />, path: '/data-quality' },
   { id: 'schedules', label: 'Schedules', icon: <Clock size={20} />, path: '/schedules' },
   { id: 'monitoring', label: 'Monitoring', icon: <Activity size={20} />, path: '/monitoring' },
   { id: 'templates', label: 'Templates', icon: <BookTemplate size={20} />, path: '/templates' },

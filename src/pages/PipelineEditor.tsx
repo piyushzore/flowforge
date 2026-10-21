@@ -8,9 +8,10 @@ import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
 import {
   Play, Square, Save, History, Settings, MousePointer2,
-  Layers, Cpu, Radio, Code, X, Copy, Sparkles
+  Layers, Cpu, Radio, Code, X, Copy, Sparkles, FileText, FileDown, Upload
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
+import { exportPipelineToYaml, downloadPipelineYaml, importPipelineFromYaml } from '../utils/pipeline-yaml';
 import type { ProcessingMode } from '../store/pipeline-store';
 
 const modeIcons: Record<ProcessingMode, React.ReactNode> = {
@@ -52,6 +53,9 @@ export default function PipelineEditor() {
 
   const [exportCodeOpen, setExportCodeOpen] = React.useState(false);
   const [aiChatOpen, setAiChatOpen] = React.useState(false);
+  const [yamlModalOpen, setYamlModalOpen] = React.useState(false);
+  const [yamlMode, setYamlMode] = React.useState<'export' | 'import'>('export');
+  const [yamlInput, setYamlInput] = React.useState('');
 
   const pipeline = getActivePipeline();
 
@@ -174,6 +178,10 @@ export default function PipelineEditor() {
           <button onClick={() => setExportCodeOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
             <Code size={14} />
             Export Code
+          </button>
+          <button onClick={() => { setYamlMode('export'); setYamlModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Export / Import YAML">
+            <FileText size={14} />
+            YAML
           </button>
           <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
             <History size={14} />
@@ -306,6 +314,102 @@ export default function PipelineEditor() {
                 <Copy size={16} />
                 Copy to Clipboard
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {yamlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-[700px] max-w-[90vw] max-h-[85vh] flex flex-col border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <FileText size={18} className="text-violet-500" />
+                <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-medium">
+                  <button
+                    onClick={() => setYamlMode('export')}
+                    className={`px-3 py-1 rounded-md transition-all ${yamlMode === 'export' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Export YAML
+                  </button>
+                  <button
+                    onClick={() => setYamlMode('import')}
+                    className={`px-3 py-1 rounded-md transition-all ${yamlMode === 'import' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Import YAML
+                  </button>
+                </div>
+              </div>
+              <button onClick={() => setYamlModalOpen(false)} className="text-slate-400 hover:text-slate-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-950/50">
+              {yamlMode === 'export' ? (
+                <pre className="text-xs text-slate-800 dark:text-slate-300 font-mono w-full overflow-x-auto whitespace-pre-wrap">
+                  {exportPipelineToYaml(pipeline)}
+                </pre>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500">Paste your pipeline YAML below to replace the current canvas:</p>
+                  <textarea
+                    rows={14}
+                    value={yamlInput}
+                    onChange={(e) => setYamlInput(e.target.value)}
+                    placeholder="name: My Pipeline&#10;nodes:&#10;  - id: n1&#10;    label: Source..."
+                    className="w-full text-xs font-mono p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-b-xl">
+              <button
+                onClick={() => setYamlModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              <div className="flex items-center gap-2">
+                {yamlMode === 'export' ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(exportPipelineToYaml(pipeline));
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    >
+                      <Copy size={15} /> Copy
+                    </button>
+                    <button
+                      onClick={() => downloadPipelineYaml(pipeline)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg shadow-sm transition-colors"
+                    >
+                      <FileDown size={15} /> Download YAML
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (!yamlInput.trim()) return;
+                      try {
+                        const parsed = importPipelineFromYaml(yamlInput);
+                        usePipelineStore.getState().setNodes(pipeline.id, parsed.nodes);
+                        usePipelineStore.getState().setEdges(pipeline.id, parsed.edges);
+                        if (parsed.name) usePipelineStore.getState().updatePipeline(pipeline.id, { name: parsed.name });
+                        setYamlModalOpen(false);
+                      } catch (err: any) {
+                        alert('Failed to parse YAML: ' + err.message);
+                      }
+                    }}
+                    disabled={!yamlInput.trim()}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40 rounded-lg shadow-sm transition-colors"
+                  >
+                    <Upload size={15} /> Load into Canvas
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
