@@ -16,6 +16,7 @@ import {
   Zap,
   Network,
   ShieldCheck,
+  CreditCard,
 } from 'lucide-react';
 
 interface NavItem {
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { id: 'team', label: 'Team', icon: <Users size={20} />, path: '/team' },
   { id: 'settings', label: 'Settings', icon: <Settings size={20} />, path: '/settings' },
   { id: 'marketplace', label: 'Marketplace', icon: <Store size={20} />, path: '/marketplace' },
+  { id: 'pricing', label: 'Plans & Pricing', icon: <CreditCard size={20} />, path: '/pricing' },
 ];
 
 interface SidebarProps {

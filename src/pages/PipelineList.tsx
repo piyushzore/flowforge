@@ -3,6 +3,7 @@ import { usePipelineStore } from '../store/pipeline-store';
 import { Search, Filter, Plus, GitBranch, Play, Pause, Copy, Trash2, Clock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export default function PipelineList() {
   const { pipelines, createPipeline, deletePipeline, duplicatePipeline, activatePipeline, pausePipeline, savePipeline } = usePipelineStore();
@@ -114,8 +115,20 @@ export default function PipelineList() {
               </div>
             ))}
             {filteredPipelines.length === 0 && (
-              <div className="col-span-full py-12 text-center text-slate-500">
-                No pipelines found.
+              <div className="col-span-full py-8">
+                <EmptyState
+                  icon={<GitBranch size={28} className="text-blue-500" />}
+                  title={search ? "No pipelines match your search" : "No pipelines created yet"}
+                  description={search ? `No pipelines found for "${search}". Try searching for another term.` : "Build your first visual data pipeline or generate one instantly with AI."}
+                  action={{
+                    label: "Create Pipeline",
+                    onClick: handleCreate
+                  }}
+                  secondaryAction={{
+                    label: "Browse Templates",
+                    onClick: () => navigate('/marketplace')
+                  }}
+                />
               </div>
             )}
           </div>

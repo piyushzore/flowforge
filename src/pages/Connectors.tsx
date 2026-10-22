@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useConnectorStore } from '../store/connector-store';
-import { Search, Plus, Settings, Trash2 } from 'lucide-react';
+import { Search, Plus, Settings, Trash2, Plug } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export default function Connectors() {
   const { instances, definitions } = useConnectorStore();
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   const filteredInstances = instances.filter(i => 
     i.name.toLowerCase().includes(search.toLowerCase())
@@ -72,6 +75,20 @@ export default function Connectors() {
           );
         })}
       </div>
+
+      {filteredInstances.length === 0 && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm">
+          <EmptyState
+            icon={<Plug size={28} className="text-violet-500" />}
+            title={search ? "No connectors found" : "No active connectors configured"}
+            description={search ? `No connectors match "${search}". Try another search.` : "Connect your databases, data warehouses, and SaaS apps to ingest and export data."}
+            action={{
+              label: "Browse Connector Gallery",
+              onClick: () => navigate('/connector-gallery')
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

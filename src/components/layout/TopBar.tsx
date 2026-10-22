@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import ShortcutsModal from '../ui/ShortcutsModal';
 
 interface TopBarProps {
   onToggleTheme: () => void;
@@ -28,6 +29,7 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
   const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -92,8 +94,12 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
           {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
-        {/* Help */}
-        <button className="p-2 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+        {/* Help / Shortcuts */}
+        <button
+          onClick={() => setShortcutsOpen(true)}
+          className="p-2 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          title="Keyboard shortcuts (?)"
+        >
           <HelpCircle size={18} />
         </button>
 
@@ -188,6 +194,8 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
           )}
         </div>
       </div>
+
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </header>
   );
 }

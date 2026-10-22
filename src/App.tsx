@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Marketplace from './pages/Marketplace';
 import Lineage from './pages/Lineage';
 import DataQuality from './pages/DataQuality';
+import Pricing from './pages/Pricing';
 import { usePipelineStore } from './store/pipeline-store';
 
 import Login from './pages/auth/Login';
@@ -62,6 +63,7 @@ function App() {
             <Route path="team" element={<Team />} />
             <Route path="settings" element={<Settings />} />
             <Route path="marketplace" element={<Marketplace />} />
+            <Route path="pricing" element={<Pricing />} />
           </Route>
           
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -38,8 +38,11 @@ import {
   Webhook,
   Play,
   RefreshCw,
+  Maximize2,
+  ShieldAlert,
 } from 'lucide-react';
 import SCDConfigContent from './SCDConfigPanel';
+import DataPreviewModal from './DataPreviewModal';
 import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
 import { usePipelineStore } from '../../store/pipeline-store';
 
@@ -53,6 +56,13 @@ interface ConfigPanelProps {
 
 export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onClose }: ConfigPanelProps) {
   const [activeTab, setActiveTab] = useState<'configure' | 'preview' | 'advanced'>('configure');
+  const [showDataModal, setShowDataModal] = useState(false);
+
+  const hasSecretLeak = React.useMemo(() => {
+    const content = `${nodeData.description || ''} ${JSON.stringify(nodeData.config || {})}`;
+    const patterns = [/gsk_[a-zA-Z0-9]{20,}/, /ghp_[a-zA-Z0-9]{20,}/, /sk_live_[a-zA-Z0-9]{20,}/, /AKIA[0-9A-Z]{16}/];
+    return patterns.some(p => p.test(content));
+  }, [nodeData.description, nodeData.config]);
 
   const activePipelineId = usePipelineStore(s => s.activePipelineId);
   const pipeline = usePipelineStore(s => s.pipelines.find(p => p.id === activePipelineId));
@@ -252,6 +262,16 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
               </div>
             )}
 
+            {hasSecretLeak && (
+              <div className="flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-950/30 rounded-lg mb-4 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-400">
+                <ShieldAlert size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Security Warning</p>
+                  <p className="mt-0.5">Detected a secret or API key pattern. Avoid plain text; store in <strong>Settings &gt; Secrets</strong>.</p>
+                </div>
+              </div>
+            )}
+
             {renderConfigContent()}
           </div>
         )}
@@ -264,6 +284,14 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
                 <span className="text-[11px] text-slate-500">
                   {previewDataToRender.length} rows × {Object.keys(previewDataToRender[0] || {}).length} columns
                 </span>
+                <button 
+                  onClick={() => setShowDataModal(true)}
+                  disabled={previewDataToRender.length === 0}
+                  className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-colors disabled:opacity-40"
+                  title="Open full interactive data inspector"
+                >
+                  <Maximize2 size={12} /> Inspect All
+                </button>
                 <button 
                   onClick={() => {
                     if (previewDataToRender.length === 0) return;
@@ -371,6 +399,13 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
           <Trash2 size={13} /> Delete
         </button>
       </div>
+
+      <DataPreviewModal
+        open={showDataModal}
+        onClose={() => setShowDataModal(false)}
+        title={nodeData.label}
+        data={previewDataToRender}
+      />
     </div>
   );
 }
