@@ -75,6 +75,14 @@ interface PipelineState {
   
   savePipeline: (id: string) => Promise<void>;
   loadAllPipelines: () => Promise<void>;
+
+  // ─── Autonomous Self-Healing ─────────────────────────────────────────
+  autonomousHealing: boolean;
+  toggleAutonomousHealing: () => void;
+  activeDriftIncident: any | null;
+  setActiveDriftIncident: (incident: any | null) => void;
+  applyHealedPatch: (pipelineId: string, nodeId: string, patchCode: string) => void;
+  simulateDriftOnPipeline: (pipelineId: string) => void;
 }
 
 // ─── Helper: set edge data ──────────────────────────────────────────────
@@ -264,6 +272,59 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   runStats: null,
   _runTimers: [],
 
+  // Autonomous Self-Healing State
+  autonomousHealing: false,
+  activeDriftIncident: null,
+  toggleAutonomousHealing: () => set(state => ({ autonomousHealing: !state.autonomousHealing })),
+  setActiveDriftIncident: (incident) => set({ activeDriftIncident: incident }),
+
+  applyHealedPatch: (pipelineId, nodeId, patchCode) => {
+    const pipeline = get().pipelines.find(p => p.id === pipelineId);
+    if (!pipeline) return;
+    const node = pipeline.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    get().updateNode(pipelineId, nodeId, {
+      preTransform: patchCode,
+      healedAt: new Date().toISOString(),
+      selfHealingIncident: node.data.selfHealingIncident ? {
+        ...node.data.selfHealingIncident,
+        status: 'healed',
+        suggestedPatchCode: patchCode
+      } : undefined
+    });
+    set({ activeDriftIncident: null });
+  },
+
+  simulateDriftOnPipeline: (pipelineId) => {
+    const pipeline = get().pipelines.find(p => p.id === pipelineId);
+    if (!pipeline || pipeline.nodes.length === 0) return;
+
+    const sourceNode = pipeline.nodes.find(n => n.data.category === 'source') || pipeline.nodes[0];
+    
+    // Inject schema drifted records: contact_email instead of email, $649.99 with currency symbol
+    const driftedData = [
+      { order_id: 'ORD-9001', customer_name: 'Drift Customer 1', contact_email: 'drift1@test.com', status: 'completed', amount: '$649.99', currency: 'USD' },
+      { order_id: 'ORD-9002', customer_name: 'Drift Customer 2', contact_email: 'drift2@test.com', status: 'completed', amount: '$129.50', currency: 'USD' },
+      { order_id: 'ORD-9003', customer_name: 'Drift Customer 3', contact_email: 'drift3@test.com', status: 'completed', amount: '$850.00', currency: 'USD' }
+    ];
+
+    get().updateNode(pipelineId, sourceNode.id, {
+      previewData: driftedData,
+      rowCount: driftedData.length
+    });
+
+    pipeline.nodes.forEach(n => {
+      if (n.id !== sourceNode.id) {
+        get().updateNode(pipelineId, n.id, {
+          preTransform: undefined,
+          selfHealingIncident: undefined,
+          healedAt: undefined
+        });
+      }
+    });
+  },
+
   setProcessingMode: (mode) => set({ processingMode: mode }),
 
   stopRun: () => {
@@ -311,38 +372,48 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     let processedRows = 0;
     let completedNodes = 0;
 
-    await executePipelineLocal(pipeline.nodes, pipeline.edges, (nodeId, outputData, error) => {
-      const p = get().pipelines.find(pp => pp.id === pipelineId);
-      if (!p) return;
-      if (error) {
-        get().updateNode(pipelineId, nodeId, { runStatus: 'failed' });
-      } else {
-        processedRows += outputData.length;
-        completedNodes++;
-        const elapsed = Date.now() - startTime;
-        
-        get().updateNode(pipelineId, nodeId, { 
-          runStatus: 'success', 
-          runProgress: 100,
-          rowsProcessed: outputData.length,
-          previewData: outputData 
-        });
-        
-        get().setEdges(pipelineId, setEdgeStatus(p.edges, nodeId, 'success', Math.round(outputData.length / 0.4)));
+    await executePipelineLocal(
+      pipeline.nodes,
+      pipeline.edges,
+      (nodeId, outputData, error) => {
+        const p = get().pipelines.find(pp => pp.id === pipelineId);
+        if (!p) return;
+        if (error) {
+          get().updateNode(pipelineId, nodeId, { runStatus: 'failed' });
+        } else {
+          processedRows += outputData.length;
+          completedNodes++;
+          const elapsed = Date.now() - startTime;
+          
+          get().updateNode(pipelineId, nodeId, { 
+            runStatus: 'success', 
+            runProgress: 100,
+            rowsProcessed: outputData.length,
+            previewData: outputData 
+          });
+          
+          get().setEdges(pipelineId, setEdgeStatus(p.edges, nodeId, 'success', Math.round(outputData.length / 0.4)));
 
-        set(state => ({
-          runStats: state.runStats ? {
-            ...state.runStats,
-            processedRows,
-            totalRows: Math.max(state.runStats.totalRows, outputData.length),
-            throughput: elapsed > 0 ? Math.round(processedRows / (elapsed / 1000)) : 0,
-            elapsedMs: elapsed,
-            nodesCompleted: completedNodes,
-            currentNodeId: nodeId
-          } : null
-        }));
+          set(state => ({
+            runStats: state.runStats ? {
+              ...state.runStats,
+              processedRows,
+              totalRows: Math.max(state.runStats.totalRows, outputData.length),
+              throughput: elapsed > 0 ? Math.round(processedRows / (elapsed / 1000)) : 0,
+              elapsedMs: elapsed,
+              nodesCompleted: completedNodes,
+              currentNodeId: nodeId
+            } : null
+          }));
+        }
+      },
+      {
+        autonomousHealing: get().autonomousHealing,
+        onDriftDetected: (incident) => {
+          set({ activeDriftIncident: incident });
+        }
       }
-    });
+    );
 
     const elapsed = Date.now() - startTime;
     get().addRun({

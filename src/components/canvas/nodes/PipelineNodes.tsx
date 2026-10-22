@@ -10,7 +10,9 @@ import {
   GitBranch, Merge, Repeat, Clock,
   Calendar, Globe, FileInput, Play, StickyNote,
   CheckCircle2, XCircle, Loader2, AlertCircle,
+  Stethoscope, Sparkles
 } from 'lucide-react';
+import { usePipelineStore } from '../../../store/pipeline-store';
 import type { PipelineNodeData, NodeCategory } from '../../../types/pipeline';
 
 // Icon mapping for node sub-types
@@ -124,9 +126,35 @@ function PipelineNodeComponent({ data, selected }: NodeProps<any>) {
     : '';
 
   const disabledClass = data.disabled ? 'disabled' : '';
+  const setActiveDriftIncident = usePipelineStore(s => s.setActiveDriftIncident);
 
   return (
     <div className={`pipeline-node ${category} ${runStateClass} ${disabledClass} ${selected ? 'selected' : ''}`}>
+      {/* Self-Healing Drift Badge */}
+      {data.selfHealingIncident && data.selfHealingIncident.status === 'pending' && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveDriftIncident(data.selfHealingIncident);
+          }}
+          className="absolute -top-3 -right-2 z-30 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-white bg-gradient-to-r from-amber-500 to-purple-600 shadow-md shadow-purple-500/30 animate-pulse border border-white dark:border-slate-800 hover:scale-105 transition-transform"
+        >
+          <Stethoscope size={10} />
+          <span>Heal Drift</span>
+        </button>
+      )}
+
+      {data.healedAt && (
+        <div
+          title="Auto-healed by FlowForge in-flight shim"
+          className="absolute -top-2.5 -right-2 z-30 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 shadow-xs"
+        >
+          <Sparkles size={8} />
+          <span>Auto-Healed</span>
+        </div>
+      )}
+
       {/* Input handle */}
       {category !== 'orchestration' && (
         <Handle

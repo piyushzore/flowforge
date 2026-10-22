@@ -4,11 +4,13 @@ import NodePalette from '../components/canvas/NodePalette';
 import ConfigPanel from '../components/canvas/ConfigPanel';
 import RunControlPanel from '../components/canvas/RunControlPanel';
 import AIChat from '../components/AIChat';
+import SelfHealingModal from '../components/canvas/SelfHealingModal';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
 import {
   Play, Square, Save, History, Settings, MousePointer2,
-  Layers, Cpu, Radio, Code, X, Copy, Sparkles, FileText, FileDown, Upload
+  Layers, Cpu, Radio, Code, X, Copy, Sparkles, FileText, FileDown, Upload,
+  Stethoscope, Zap
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
 import { exportPipelineToYaml, downloadPipelineYaml, importPipelineFromYaml } from '../utils/pipeline-yaml';
@@ -41,7 +43,12 @@ export default function PipelineEditor() {
     setProcessingMode,
     saveStatus,
     setSaveStatus,
-    savePipeline
+    savePipeline,
+    activeDriftIncident,
+    setActiveDriftIncident,
+    autonomousHealing,
+    toggleAutonomousHealing,
+    simulateDriftOnPipeline
   } = usePipelineStore();
 
   const {
@@ -194,6 +201,36 @@ export default function PipelineEditor() {
 
           <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
 
+          {/* Autonomous Healing Toggle */}
+          <button
+            onClick={toggleAutonomousHealing}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
+              autonomousHealing
+                ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-slate-200 dark:border-slate-800'
+            }`}
+            title="Auto-apply AI patches without pausing (Enterprise Zero-Downtime)"
+          >
+            <Stethoscope size={13} className={autonomousHealing ? 'text-purple-600 animate-pulse' : ''} />
+            <span>Autonomous: {autonomousHealing ? 'ON' : 'OFF'}</span>
+          </button>
+
+          {/* Simulate Drift Button */}
+          <button
+            onClick={() => {
+              simulateDriftOnPipeline(pipeline.id);
+              startTestRun(pipeline.id);
+            }}
+            disabled={isRunning || pipeline.nodes.length === 0}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 rounded-lg transition-colors"
+            title="Inject corrupted schema (renamed column + '$' currency string) to test self-healing"
+          >
+            <Sparkles size={12} className="text-amber-500" />
+            <span>Simulate Drift</span>
+          </button>
+
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+
           {/* Processing Mode Selector */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 mr-1">
             {(['batch', 'micro-batch', 'stream'] as ProcessingMode[]).map((mode) => (
@@ -240,6 +277,35 @@ export default function PipelineEditor() {
           </button>
         </div>
       </div>
+
+      {/* Self-Healing Drift Alert Banner */}
+      {activeDriftIncident && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-amber-500/15 border-b border-amber-300 dark:border-amber-700/60 px-4 py-2 flex items-center justify-between text-xs z-20 animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+            <div className="p-1 bg-amber-500 text-white rounded-md animate-pulse">
+              <Stethoscope size={13} />
+            </div>
+            <span>
+              <strong>Schema Drift Detected</strong> on node <span className="font-mono underline font-bold">{activeDriftIncident.nodeName}</span> ({activeDriftIncident.anomalies.length} anomal{activeDriftIncident.anomalies.length > 1 ? 'ies' : 'y'}). Pipeline paused safely without crashing.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveDriftIncident(null)}
+              className="px-2.5 py-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-[11px]"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={() => {}} 
+              className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white font-bold rounded-lg shadow-sm text-[11px]"
+            >
+              <Zap size={11} className="fill-white" />
+              Review & Auto-Heal
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main workspace area */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -417,6 +483,14 @@ export default function PipelineEditor() {
 
       {/* AI Chat Panel */}
       <AIChat open={aiChatOpen} onClose={() => setAiChatOpen(false)} />
+
+      {/* Autonomous Self-Healing Modal */}
+      <SelfHealingModal
+        open={Boolean(activeDriftIncident)}
+        onClose={() => setActiveDriftIncident(null)}
+        incident={activeDriftIncident}
+        pipelineId={pipeline.id}
+      />
     </div>
   );
 }

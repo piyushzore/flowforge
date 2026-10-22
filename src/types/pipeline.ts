@@ -92,6 +92,10 @@ export interface PipelineNodeData {
   error?: string;
   fixSuggestion?: string;
   disabled?: boolean;
+  selfHealingIncident?: any;
+  preTransform?: string;
+  autoHealEnabled?: boolean;
+  healedAt?: string;
   
   // Config specific to node type
   config?: Record<string, unknown>;

@@ -1,4 +1,6 @@
 import type { PipelineNode, PipelineEdge } from '../types/pipeline';
+import { detectNodeDrift, type DriftIncident } from './drift-detector';
+import { synthesizeHealingPatch } from '../lib/ai-healer';
 
 // Helper to topologically sort the graph
 export function topoSort(nodes: PipelineNode[], edges: PipelineEdge[]): string[] {
@@ -26,7 +28,11 @@ export function topoSort(nodes: PipelineNode[], edges: PipelineEdge[]): string[]
 export async function executePipelineLocal(
   nodes: PipelineNode[],
   edges: PipelineEdge[],
-  onNodeComplete: (nodeId: string, outputData: any[], error?: string) => void
+  onNodeComplete: (nodeId: string, outputData: any[], error?: string) => void,
+  options?: {
+    autonomousHealing?: boolean;
+    onDriftDetected?: (incident: DriftIncident) => void;
+  }
 ) {
   const sortedIds = topoSort(nodes, edges);
   
@@ -138,6 +144,41 @@ export async function executePipelineLocal(
         const primaryInputId = incomingEdges[0].source;
         let inputData = results.get(primaryInputId) || [];
         let outputData = JSON.parse(JSON.stringify(inputData));
+
+        // In-flight Healer: Execute pre-transform patch shim if present
+        if (node.data.preTransform) {
+          try {
+            const patchFn = new Function('row', `return (${node.data.preTransform})(row)`);
+            outputData = outputData.map(patchFn);
+          } catch (e) {
+            console.warn(`[Self-Healing] Pre-transform failed on node ${nodeId}:`, e);
+          }
+        } else {
+          // Schema & Data Drift Detection
+          const incident = detectNodeDrift(node, outputData);
+          if (incident) {
+            if (options?.autonomousHealing || node.data.autoHealEnabled) {
+              const sol = await synthesizeHealingPatch(incident, outputData.slice(0, 5));
+              node.data.preTransform = sol.patchCode;
+              node.data.healedAt = new Date().toISOString();
+              node.data.selfHealingIncident = {
+                ...incident,
+                status: 'healed',
+                suggestedPatchCode: sol.patchCode,
+                diagnosis: sol.diagnosis
+              };
+              try {
+                const patchFn = new Function('row', `return (${sol.patchCode})(row)`);
+                outputData = outputData.map(patchFn);
+              } catch (e) {
+                console.warn('[Self-Healing] Autonomous patch application failed:', e);
+              }
+            } else if (options?.onDriftDetected) {
+              node.data.selfHealingIncident = incident;
+              options.onDriftDetected(incident);
+            }
+          }
+        }
 
         // 3. FILTER
         if (subType === 'filter') {
