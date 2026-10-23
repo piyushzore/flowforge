@@ -5,12 +5,13 @@ import ConfigPanel from '../components/canvas/ConfigPanel';
 import RunControlPanel from '../components/canvas/RunControlPanel';
 import AIChat from '../components/AIChat';
 import SelfHealingModal from '../components/canvas/SelfHealingModal';
+import WebhookApiModal from '../components/canvas/WebhookApiModal';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
 import {
   Play, Square, Save, History, Settings, MousePointer2,
   Layers, Cpu, Radio, Code, X, Copy, Sparkles, FileText, FileDown, Upload,
-  Stethoscope, Zap
+  Stethoscope, Zap, Globe
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
 import { exportPipelineToYaml, downloadPipelineYaml, importPipelineFromYaml } from '../utils/pipeline-yaml';
@@ -63,6 +64,7 @@ export default function PipelineEditor() {
   const [yamlModalOpen, setYamlModalOpen] = React.useState(false);
   const [yamlMode, setYamlMode] = React.useState<'export' | 'import'>('export');
   const [yamlInput, setYamlInput] = React.useState('');
+  const [webhookModalOpen, setWebhookModalOpen] = React.useState(false);
 
   const pipeline = getActivePipeline();
 
@@ -189,6 +191,14 @@ export default function PipelineEditor() {
           <button onClick={() => { setYamlMode('export'); setYamlModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Export / Import YAML">
             <FileText size={14} />
             YAML
+          </button>
+          <button
+            onClick={() => setWebhookModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors border border-blue-200/60 dark:border-blue-800/60"
+            title="Deploy as live REST API & Webhook endpoint"
+          >
+            <Globe size={14} />
+            API & Webhooks
           </button>
           <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
             <History size={14} />
@@ -491,6 +501,15 @@ export default function PipelineEditor() {
         incident={activeDriftIncident}
         pipelineId={pipeline.id}
       />
+
+      {/* Pipeline-as-an-API & Webhook Studio */}
+      {pipeline && (
+        <WebhookApiModal
+          open={webhookModalOpen}
+          onClose={() => setWebhookModalOpen(false)}
+          pipeline={pipeline}
+        />
+      )}
     </div>
   );
 }

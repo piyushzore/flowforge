@@ -44,9 +44,15 @@ export async function executePipelineLocal(
     if (!node) continue;
 
     try {
-      if (node.data.category === 'source') {
+      if (node.data.category === 'source' || node.data.subType === 'webhook' || node.data.subType === 'webhook-trigger') {
         // Sources get preview data or custom config payload
-        const data = node.data.previewData || [];
+        let data = node.data.previewData || [];
+        if (data.length === 0 && (node.data.subType === 'webhook' || node.data.subType === 'webhook-trigger')) {
+          data = [
+            { order_id: 'ORD-7701', customer_name: 'Elena Rostova', email: 'elena@example.com', amount: 649.99, status: 'completed', currency: 'USD' },
+            { order_id: 'ORD-7702', customer_name: 'Marcus Vance', email: 'marcus@sample.org', amount: 129.50, status: 'completed', currency: 'USD' }
+          ];
+        }
         results.set(nodeId, data);
         onNodeComplete(nodeId, data);
       } else if (node.data.category === 'transform' || node.data.category === 'validation') {

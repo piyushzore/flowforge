@@ -137,6 +137,9 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <AITransformConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} sampleData={previewDataToRender} />;
       case 'custom-code':
         return <CustomCodeConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
+      case 'webhook':
+      case 'webhook-trigger':
+        return <WebhookConfigContent nodeData={nodeData} onUpdate={onUpdate} pipelineId={pipeline?.id || ''} />;
       default:
         if (nodeData.category === 'source' || nodeData.category === 'destination') {
           return <ConnectionConfigContent nodeId={nodeId} nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} />;
@@ -1376,6 +1379,74 @@ function CustomCodeConfigContent({
           ✅ Code saved — will execute during pipeline run
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Webhook Configuration Content ───────────────────────────────────────────
+function WebhookConfigContent({
+  nodeData,
+  onUpdate,
+  pipelineId
+}: {
+  nodeData: PipelineNodeData;
+  onUpdate: (data: Partial<PipelineNodeData>) => void;
+  pipelineId: string;
+}) {
+  const [copied, setCopied] = React.useState(false);
+  const endpointUrl = `https://flowforge-gold.vercel.app/api/trigger?pipeline=${pipelineId}`;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+          HTTP Endpoint URL (POST)
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            readOnly
+            value={endpointUrl}
+            className="flex-1 text-[11px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 font-mono select-all text-slate-800 dark:text-slate-200"
+          />
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(endpointUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg text-xs font-semibold shrink-0 transition-colors"
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">HTTP Method</span>
+          <span className="px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px]">
+            POST
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Authentication</span>
+          <span className="font-mono text-slate-700 dark:text-slate-300 text-[11px]">Bearer Token</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-slate-500">Response Mode</span>
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-[11px]">
+            Synchronous JSON (&lt;150ms)
+          </span>
+        </div>
+      </div>
+
+      <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200/60 dark:border-blue-900/40 text-xs">
+        <p className="font-semibold text-blue-900 dark:text-blue-300">Live Webhook Testing</p>
+        <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+          Send sample Shopify or Stripe payloads directly into this node using the top toolbar <strong>"API & Webhooks"</strong> studio.
+        </p>
+      </div>
     </div>
   );
 }
