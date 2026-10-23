@@ -208,7 +208,7 @@ print("Output:", response.json())`;
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Trigger <span className="font-semibold text-slate-700 dark:text-slate-300">{pipeline.name}</span> in $<150\text{ms}$ from Shopify, Stripe, Zapier, or backend apps.
+                Trigger <span className="font-semibold text-slate-700 dark:text-slate-300">{pipeline.name}</span> in under 150ms from Shopify, Stripe, Zapier, or backend apps.
               </p>
             </div>
           </div>

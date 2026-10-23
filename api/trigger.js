@@ -1,7 +1,7 @@
 // Serverless API Endpoint: /api/trigger
 // Handles incoming webhooks and REST API requests for FlowForge pipelines
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   // 1. Enable CORS for cross-origin webhook ingestion
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -27,7 +27,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const rawBody = req.body;
-    let records: Record<string, any>[] = [];
+    let records = [];
 
     // Normalize incoming payload into an array of records
     if (Array.isArray(rawBody)) {
@@ -38,7 +38,6 @@ export default async function handler(req: any, res: any) {
       } else if (Array.isArray(rawBody.records)) {
         records = rawBody.records;
       } else if (rawBody.order || rawBody.charge || rawBody.event) {
-        // Handle common webhook shapes (e.g. Shopify, Stripe)
         records = [rawBody.order || rawBody.charge || rawBody];
       } else {
         records = [rawBody];
@@ -56,7 +55,7 @@ export default async function handler(req: any, res: any) {
 
     // Apply FlowForge In-Flight Normalization & Self-Healing Shims
     const transformed = records.map((record) => {
-      const healed: Record<string, any> = { ...record };
+      const healed = { ...record };
 
       // Re-alias common renamed fields
       if (healed.contact_email && !healed.email) {
@@ -92,13 +91,13 @@ export default async function handler(req: any, res: any) {
       success: true,
       message: 'Pipeline executed successfully via API',
       executionId,
-      pipelineId: req.query.pipeline || 'live-api-pipeline',
+      pipelineId: req.query ? req.query.pipeline || 'live-api-pipeline' : 'live-api-pipeline',
       recordsIn,
       recordsOut: transformed.length,
       latencyMs: elapsedMs,
       data: transformed
     });
-  } catch (error: any) {
+  } catch (error) {
     return res.status(500).json({
       error: 'Execution Failed',
       message: error.message || 'An error occurred during pipeline execution.'
