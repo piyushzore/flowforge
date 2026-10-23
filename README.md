@@ -16,9 +16,12 @@
 
 ## 🌟 Highlights & Capabilities
 
+- 🩺 **Autonomous Self-Healing Pipelines**: In-flight schema and type drift detection (renamed columns, type mismatches, currency symbols) with Groq AI patch synthesis, live side-by-side visual diff review, and 0-downtime hot-patching.
+- ⚡ **Pipeline-as-an-API & Live Webhooks (`/api/trigger`)**: 1-click deploy any visual DAG into a live serverless REST endpoint running in under 5ms, with an interactive testing studio and cURL/JS/Python code generation.
 - 🤖 **AI Pipeline Designer (`⌘J`)**: Build complex multi-node visual DAGs from natural language prompts using Groq inference.
 - 🎨 **Visual Canvas**: 60+ node types across Sources, Transformations, Destinations, and Control Flow powered by `@xyflow/react`.
 - ⚡ **Complete Transform Engine**: In-browser execution for Joins, Group By + Aggregations, Null Handling, Type Casting, Window Functions, and Slowly Changing Dimensions (SCD Types 0–6).
+- 🔍 **Full Data Preview & Schema Inspector**: Full-screen data grid with cell search, column sorting, pagination, and 1-click CSV export.
 - 🧠 **AI Transform & Custom Code**: Describe transformations in plain English to generate validated JavaScript arrow functions, or write custom JavaScript and SQL.
 - 🔗 **Data Lineage**: Interactive table-level and column-level DAG visualization with upstream/downstream dependency tracing.
 - 🛡️ **Data Quality & Profiler**: Automatic null %, cardinality, min/max metrics, and 0–100 Data Quality Health Scores.
