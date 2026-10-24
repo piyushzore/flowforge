@@ -1,0 +1,13 @@
+order_id,customer_name,email,status,amount,currency,items_count,created_at
+ORD-1001,Alice Johnson,alice.johnson@example.com,completed,649.99,USD,4,2026-10-15T10:30:00Z
+ORD-1002,Bob Smith,bob.smith@testmail.io,completed,129.50,USD,2,2026-10-15T11:15:00Z
+ORD-1003,Charlie Davis,,completed,49.90,USD,1,2026-10-15T12:00:00Z
+ORD-1004,Diana Prince,diana@themyscira.gov,cancelled,890.00,USD,5,2026-10-16T09:20:00Z
+ORD-1005,Evan Wright,evan.w@sample.com,completed,750.25,USD,3,2026-10-16T14:45:00Z
+ORD-1006,Fiona Gallagher,fiona.g@chicago.org,pending,220.00,USD,2,2026-10-17T08:10:00Z
+ORD-1007,George Miller,george.miller@cinema.com,completed,89.99,USD,1,2026-10-17T16:30:00Z
+ORD-1008,Hannah Abbott,hannah@hufflepuff.net,completed,1250.00,USD,8,2026-10-18T10:05:00Z
+ORD-1009,Ian Malcolm,ian.chaos@jurassic.edu,refunded,310.45,USD,3,2026-10-18T13:25:00Z
+ORD-1010,Julia Roberts,julia@hollywood.com,completed,345.80,USD,2,2026-10-19T11:50:00Z
+ORD-1011,Kevin Hart,kevin@comedy.io,completed,29.99,USD,1,2026-10-19T15:10:00Z
+ORD-1012,Laura Croft,laura@tomb.org,completed,520.00,USD,3,2026-10-20T09:40:00Z
