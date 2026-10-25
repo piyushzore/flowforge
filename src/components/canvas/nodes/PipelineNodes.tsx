@@ -111,7 +111,7 @@ const statusIcons: Record<string, React.ReactNode> = {
   queued: <Clock size={14} className="text-slate-400 animate-progress-pulse" />,
 };
 
-function PipelineNodeComponent({ data, selected }: NodeProps<any>) {
+function PipelineNodeComponent({ id, data, selected }: NodeProps<any>) {
   const category = data.category || 'transform';
   const colors = categoryColors[category as NodeCategory] || categoryColors.transform;
   const icon = nodeIcons[data.subType] || <Layers size={16} />;
