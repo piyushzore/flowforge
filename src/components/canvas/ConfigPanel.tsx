@@ -197,27 +197,27 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
   return (
     <div className="w-full h-full bg-white dark:bg-slate-950 flex flex-col flex-shrink-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className={`w-6 h-6 rounded flex items-center justify-center text-white text-xs
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-6 h-6 rounded flex items-center justify-center text-white text-xs shrink-0
             ${nodeData.category === 'source' ? 'bg-emerald-500' : 
               nodeData.category === 'transform' ? 'bg-blue-500' : 
               nodeData.category === 'destination' ? 'bg-violet-500' : 
               nodeData.category === 'control' ? 'bg-amber-500' : 'bg-slate-500'}`}>
             {nodeData.category[0].toUpperCase()}
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{nodeData.label}</h3>
-            <p className="text-[11px] text-slate-500 capitalize">{nodeData.subType.replace(/-/g, ' ')}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{nodeData.label}</h3>
+            <p className="text-[11px] text-slate-500 capitalize truncate">{nodeData.subType.replace(/-/g, ' ')}</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors">
+        <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors shrink-0">
           <X size={16} className="text-slate-400" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-100 dark:border-slate-800">
+      <div className="flex border-b border-slate-100 dark:border-slate-800 shrink-0">
         {(['configure', 'preview', 'advanced'] as const).map((tab) => (
           <button
             key={tab}
@@ -384,20 +384,20 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
       </div>
 
       {/* Footer */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-950">
         <button
           onClick={() => onUpdate({ disabled: !nodeData.disabled })}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0"
         >
           {nodeData.disabled ? <Eye size={13} /> : <EyeOff size={13} />}
           {nodeData.disabled ? 'Enable' : 'Disable'}
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0">
           <Copy size={13} /> Duplicate
         </button>
         <button
           onClick={onDelete}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors ml-auto"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors ml-auto shrink-0"
         >
           <Trash2 size={13} /> Delete
         </button>

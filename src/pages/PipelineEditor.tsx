@@ -69,11 +69,17 @@ export default function PipelineEditor() {
   // Dynamic & Auto-Adjustable Configuration Panel state
   const [panelWidth, setPanelWidth] = React.useState<number>(() => {
     const saved = localStorage.getItem('flowforge_config_width');
-    return saved ? parseInt(saved, 10) : 400;
+    const parsed = saved ? parseInt(saved, 10) : 380;
+    const maxAllowed = Math.min(460, Math.max(320, Math.floor(window.innerWidth * 0.4)));
+    return Math.min(Math.max(parsed, 320), maxAllowed);
   });
   const [panelMode, setPanelMode] = React.useState<'docked' | 'overlay'>(() => {
-    return (localStorage.getItem('flowforge_config_mode') as 'docked' | 'overlay') ||
-      (window.innerWidth < 1366 ? 'overlay' : 'docked');
+    const saved = localStorage.getItem('flowforge_config_mode') as 'docked' | 'overlay';
+    if (saved && (saved === 'docked' || saved === 'overlay')) {
+      if (window.innerWidth < 1440 && saved === 'docked') return 'overlay';
+      return saved;
+    }
+    return window.innerWidth < 1440 ? 'overlay' : 'docked';
   });
   const [isResizing, setIsResizing] = React.useState(false);
 
@@ -85,7 +91,8 @@ export default function PipelineEditor() {
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = startX - moveEvent.clientX;
-      const newWidth = Math.min(Math.max(startWidth + delta, 320), Math.min(window.innerWidth * 0.65, 750));
+      const maxAllowed = Math.min(500, Math.max(340, Math.floor(window.innerWidth * 0.45)));
+      const newWidth = Math.min(Math.max(startWidth + delta, 300), maxAllowed);
       setPanelWidth(newWidth);
       localStorage.setItem('flowforge_config_width', String(newWidth));
     };
@@ -164,13 +171,13 @@ export default function PipelineEditor() {
   };
 
   return (
-    <div className="h-full flex flex-col animate-fade-in relative">
+    <div className="h-full w-full min-w-0 flex flex-col overflow-hidden relative">
       {/* Editor Toolbar */}
-      <div className="h-14 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 select-none z-10 shrink-0">
-        <div className="flex items-center gap-4">
-          <h1 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            {pipeline.name}
-            <span className={`px-2 py-0.5 rounded text-[10px] font-medium uppercase ${
+      <div className="h-14 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 select-none z-10 shrink-0 w-full min-w-0 overflow-x-auto no-scrollbar gap-2">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <h1 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 max-w-[200px] truncate" title={pipeline.name}>
+            <span className="truncate">{pipeline.name}</span>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-medium uppercase shrink-0 ${
               pipeline.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
               pipeline.status === 'paused' ? 'bg-amber-100 text-amber-700' :
               'bg-slate-100 text-slate-700'
@@ -178,16 +185,16 @@ export default function PipelineEditor() {
               {pipeline.status}
             </span>
           </h1>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 shrink-0">
             {saveStatus === 'saving' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Saving...</span>}
-            {saveStatus === 'saved' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Saved to cloud</span>}
-            {saveStatus === 'unsaved' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Unsaved changes</span>}
+            {saveStatus === 'saved' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Saved</span>}
+            {saveStatus === 'unsaved' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Unsaved</span>}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Undo / Redo */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 mr-2">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 mr-1 shrink-0">
             <button 
               onClick={() => undo(pipeline.id)} 
               disabled={!canUndo(pipeline.id)}
@@ -208,7 +215,7 @@ export default function PipelineEditor() {
 
           <button
             onClick={() => setAiChatOpen(prev => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-semibold rounded-lg transition-all shrink-0 ${
               aiChatOpen
                 ? 'bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-sm'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -216,32 +223,38 @@ export default function PipelineEditor() {
             title="AI Pipeline Designer (⌘J)"
           >
             <Sparkles size={14} />
-            AI Design
+            <span className="hidden xl:inline">AI Design</span>
           </button>
-          <button onClick={() => setExportCodeOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+
+          <button onClick={() => setExportCodeOpen(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0" title="Export PySpark Code">
             <Code size={14} />
-            Export Code
+            <span className="hidden xl:inline">Export Code</span>
           </button>
-          <button onClick={() => { setYamlMode('export'); setYamlModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Export / Import YAML">
+
+          <button onClick={() => { setYamlMode('export'); setYamlModalOpen(true); }} className="flex items-center gap-1 px-2 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0" title="Export / Import YAML">
             <FileText size={14} />
-            YAML
+            <span className="hidden lg:inline">YAML</span>
           </button>
+
           <button
             onClick={() => setWebhookModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors border border-blue-200/60 dark:border-blue-800/60"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors border border-blue-200/60 dark:border-blue-800/60 shrink-0"
             title="Deploy as live REST API & Webhook endpoint"
           >
             <Globe size={14} />
-            API & Webhooks
+            <span className="hidden md:inline">API</span>
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+
+          <button className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0">
             <History size={14} />
             Versions
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+
+          <button className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0">
             <Settings size={14} />
             Settings
           </button>
+
           <button
             onClick={() => {
               if (!configPanelOpen) {
@@ -253,7 +266,7 @@ export default function PipelineEditor() {
                 setConfigPanelOpen(false);
               }
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors border ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-semibold rounded-lg transition-colors border shrink-0 ${
               configPanelOpen
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent hover:border-slate-200'
@@ -261,15 +274,15 @@ export default function PipelineEditor() {
             title="Toggle Node Configuration Panel"
           >
             <SlidersHorizontal size={14} className={configPanelOpen ? 'text-blue-500' : ''} />
-            Configure
+            <span className="hidden sm:inline">Configure</span>
           </button>
 
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+          <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
 
           {/* Autonomous Healing Toggle */}
           <button
             onClick={toggleAutonomousHealing}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border transition-all ${
+            className={`flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-semibold rounded-lg border transition-all shrink-0 ${
               autonomousHealing
                 ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 shadow-sm'
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border-slate-200 dark:border-slate-800'
@@ -277,7 +290,7 @@ export default function PipelineEditor() {
             title="Auto-apply AI patches without pausing (Enterprise Zero-Downtime)"
           >
             <Stethoscope size={13} className={autonomousHealing ? 'text-purple-600 animate-pulse' : ''} />
-            <span>Autonomous: {autonomousHealing ? 'ON' : 'OFF'}</span>
+            <span>Auto-Heal: {autonomousHealing ? 'ON' : 'OFF'}</span>
           </button>
 
           {/* Simulate Drift Button */}
@@ -287,23 +300,23 @@ export default function PipelineEditor() {
               startTestRun(pipeline.id);
             }}
             disabled={isRunning || pipeline.nodes.length === 0}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 rounded-lg transition-colors"
+            className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 rounded-lg transition-colors shrink-0"
             title="Inject corrupted schema (renamed column + '$' currency string) to test self-healing"
           >
             <Sparkles size={12} className="text-amber-500" />
-            <span>Simulate Drift</span>
+            <span className="hidden lg:inline">Simulate Drift</span>
           </button>
 
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
+          <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
 
           {/* Processing Mode Selector */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 mr-1">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 shrink-0">
             {(['batch', 'micro-batch', 'stream'] as ProcessingMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setProcessingMode(mode)}
                 disabled={isRunning}
-                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all ${
+                className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md transition-all ${
                   processingMode === mode
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                     : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-40'
@@ -311,34 +324,35 @@ export default function PipelineEditor() {
                 title={mode === 'batch' ? 'Process all data at once' : mode === 'micro-batch' ? 'Fast small batches' : 'Continuous real-time processing'}
               >
                 {modeIcons[mode]}
-                {modeLabels[mode]}
+                <span className="hidden xl:inline">{modeLabels[mode]}</span>
               </button>
             ))}
           </div>
 
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
-          
+          <div className="w-px h-5 bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
+
           {isRunning ? (
             <button
               onClick={stopRun}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-semibold bg-red-50 dark:bg-red-950 text-red-600 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold bg-red-50 dark:bg-red-950 text-red-600 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-all shadow-sm shrink-0"
             >
               <Square size={12} fill="currentColor" />
-              Stop Run
+              Stop
             </button>
           ) : (
             <button 
               onClick={() => startTestRun(pipeline.id)}
               disabled={pipeline.nodes.length === 0}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all shadow-sm hover:shadow"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all shadow-sm hover:shadow shrink-0"
             >
               <Play size={14} />
-              {processingMode === 'stream' ? 'Start Stream' : 'Run Pipeline'}
+              {processingMode === 'stream' ? 'Stream' : 'Run'}
             </button>
           )}
-          <button className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition-all shadow-sm hover:shadow ml-1">
+
+          <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition-all shadow-sm hover:shadow shrink-0">
             <Save size={14} />
-            Activate
+            <span className="hidden sm:inline">Activate</span>
           </button>
         </div>
       </div>
@@ -373,10 +387,10 @@ export default function PipelineEditor() {
       )}
 
       {/* Main workspace area */}
-      <div className="flex-1 flex overflow-hidden relative">
-        <NodePalette className="z-10" />
+      <div className="flex-1 flex overflow-hidden relative min-w-0 w-full h-full">
+        <NodePalette className="z-10 shrink-0" />
         
-        <div className="flex-1 relative min-w-0">
+        <div className="flex-1 relative min-w-0 h-full overflow-hidden">
           <PipelineCanvas
             nodes={pipeline.nodes}
             edges={pipeline.edges}
@@ -420,18 +434,18 @@ export default function PipelineEditor() {
 
         {/* Dynamic & Auto-Adjustable Configuration Drawer */}
         {configPanelOpen && (
-          <div
+          <aside
             style={{ width: `${panelWidth}px` }}
             className={`${
               panelMode === 'overlay'
-                ? 'absolute right-0 top-0 bottom-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-2xl border-l border-slate-200 dark:border-slate-800'
-                : 'relative border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0'
-            } h-full flex flex-col transition-all duration-75 select-none`}
+                ? 'absolute right-0 top-0 bottom-0 z-30 shadow-2xl'
+                : 'relative flex-shrink-0'
+            } h-full max-w-[calc(100vw-80px)] border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col transition-all duration-75 select-none overflow-hidden`}
           >
             {/* Left Edge Drag Handle to Resize Width */}
             <div
               onMouseDown={startResizing}
-              className={`absolute -left-1.5 top-0 bottom-0 w-3 cursor-col-resize z-40 flex items-center justify-center hover:bg-blue-500/20 group transition-colors ${
+              className={`absolute -left-1 top-0 bottom-0 w-3 cursor-col-resize z-40 flex items-center justify-center hover:bg-blue-500/20 group transition-colors ${
                 isResizing ? 'bg-blue-500/30' : ''
               }`}
               title="Drag to resize panel width"
@@ -440,12 +454,12 @@ export default function PipelineEditor() {
             </div>
 
             {/* Quick Panel Mode Toolbar */}
-            <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <SlidersHorizontal size={12} className="text-blue-500" />
-                Configure ({panelWidth}px)
+            <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 shrink-0 gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 min-w-0 truncate">
+                <SlidersHorizontal size={12} className="text-blue-500 shrink-0" />
+                <span className="truncate">Configure ({panelWidth}px)</span>
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => {
                     const next = panelMode === 'docked' ? 'overlay' : 'docked';
@@ -468,7 +482,7 @@ export default function PipelineEditor() {
             </div>
 
             {/* Content: Selected Node or Node Picker */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
               {selectedNode ? (
                 <ConfigPanel
                   nodeId={selectedNode.id}
@@ -503,7 +517,7 @@ export default function PipelineEditor() {
                 </div>
               )}
             </div>
-          </div>
+          </aside>
         )}
       </div>
 

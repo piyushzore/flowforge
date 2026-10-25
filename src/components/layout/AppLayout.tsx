@@ -47,7 +47,11 @@ export default function AppLayout() {
       />
 
       <div
-        className={`flex-1 flex flex-col transition-all duration-200 ${sidebarCollapsed ? 'ml-[64px]' : 'ml-[240px]'}`}
+        className={`flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-200 ${
+          sidebarCollapsed
+            ? 'ml-[64px] max-w-[calc(100vw-64px)]'
+            : 'ml-[240px] max-w-[calc(100vw-240px)]'
+        }`}
       >
         <TopBar
           onToggleTheme={toggleTheme}
@@ -55,7 +59,7 @@ export default function AppLayout() {
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
 
-        <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
+        <main className="flex-1 min-w-0 w-full overflow-hidden bg-slate-50 dark:bg-slate-950">
           <Outlet context={{ commandPaletteOpen, setCommandPaletteOpen }} />
         </main>
       </div>

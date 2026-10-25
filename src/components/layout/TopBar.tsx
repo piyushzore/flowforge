@@ -70,7 +70,7 @@ export default function TopBar({ onToggleTheme, isDark, onOpenCommandPalette }: 
   };
 
   return (
-    <header className="h-14 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-30">
+    <header className="h-14 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-30 w-full min-w-0 shrink-0">
       {/* Search */}
       <button
         onClick={onOpenCommandPalette}
