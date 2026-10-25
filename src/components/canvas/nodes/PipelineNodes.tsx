@@ -10,9 +10,10 @@ import {
   GitBranch, Merge, Repeat, Clock,
   Calendar, Globe, FileInput, Play, StickyNote,
   CheckCircle2, XCircle, Loader2, AlertCircle,
-  Stethoscope, Sparkles
+  Stethoscope, Sparkles, Settings
 } from 'lucide-react';
 import { usePipelineStore } from '../../../store/pipeline-store';
+import { useUIStore } from '../../../store/ui-store';
 import type { PipelineNodeData, NodeCategory } from '../../../types/pipeline';
 
 // Icon mapping for node sub-types
@@ -185,6 +186,23 @@ function PipelineNodeComponent({ data, selected }: NodeProps<any>) {
             </span>
           </div>
 
+          {/* Quick Configure Button */}
+          {!isNote && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const ui = useUIStore.getState();
+                ui.setSelectedNodeId(id);
+                ui.setConfigPanelOpen(true);
+              }}
+              className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+              title="Configure Node"
+            >
+              <Settings size={13} />
+            </button>
+          )}
+
           {/* Config status */}
           {!isNote && (
             <div className="flex-shrink-0">
@@ -303,6 +321,8 @@ export const OrchestrationNode = memo(PipelineNodeComponent);
 export const NoteNode = memo(PipelineNodeComponent);
 
 export const nodeTypes = {
+  'pipeline-node': SourceNode,
+  default: SourceNode,
   source: SourceNode,
   transform: TransformNode,
   destination: DestinationNode,

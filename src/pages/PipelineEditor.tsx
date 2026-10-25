@@ -11,7 +11,7 @@ import { useUIStore } from '../store/ui-store';
 import {
   Play, Square, Save, History, Settings, MousePointer2,
   Layers, Cpu, Radio, Code, X, Copy, Sparkles, FileText, FileDown, Upload,
-  Stethoscope, Zap, Globe
+  Stethoscope, Zap, Globe, SlidersHorizontal
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
 import { exportPipelineToYaml, downloadPipelineYaml, importPipelineFromYaml } from '../utils/pipeline-yaml';
@@ -65,6 +65,40 @@ export default function PipelineEditor() {
   const [yamlMode, setYamlMode] = React.useState<'export' | 'import'>('export');
   const [yamlInput, setYamlInput] = React.useState('');
   const [webhookModalOpen, setWebhookModalOpen] = React.useState(false);
+
+  // Dynamic & Auto-Adjustable Configuration Panel state
+  const [panelWidth, setPanelWidth] = React.useState<number>(() => {
+    const saved = localStorage.getItem('flowforge_config_width');
+    return saved ? parseInt(saved, 10) : 400;
+  });
+  const [panelMode, setPanelMode] = React.useState<'docked' | 'overlay'>(() => {
+    return (localStorage.getItem('flowforge_config_mode') as 'docked' | 'overlay') ||
+      (window.innerWidth < 1366 ? 'overlay' : 'docked');
+  });
+  const [isResizing, setIsResizing] = React.useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startWidth = panelWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startX - moveEvent.clientX;
+      const newWidth = Math.min(Math.max(startWidth + delta, 320), Math.min(window.innerWidth * 0.65, 750));
+      setPanelWidth(newWidth);
+      localStorage.setItem('flowforge_config_width', String(newWidth));
+    };
+
+    const onMouseUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   const pipeline = getActivePipeline();
 
@@ -208,6 +242,27 @@ export default function PipelineEditor() {
             <Settings size={14} />
             Settings
           </button>
+          <button
+            onClick={() => {
+              if (!configPanelOpen) {
+                if (!selectedNodeId && pipeline.nodes.length > 0) {
+                  setSelectedNodeId(pipeline.nodes[0].id);
+                }
+                setConfigPanelOpen(true);
+              } else {
+                setConfigPanelOpen(false);
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors border ${
+              configPanelOpen
+                ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent hover:border-slate-200'
+            }`}
+            title="Toggle Node Configuration Panel"
+          >
+            <SlidersHorizontal size={14} className={configPanelOpen ? 'text-blue-500' : ''} />
+            Configure
+          </button>
 
           <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1"></div>
 
@@ -342,17 +397,112 @@ export default function PipelineEditor() {
 
           {/* Run Control Panel (overlays canvas bottom) */}
           <RunControlPanel />
+
+          {/* Persistent Right Edge Configure Button (When panel is closed) */}
+          {!configPanelOpen && (
+            <button
+              onClick={() => {
+                if (!selectedNodeId && pipeline.nodes.length > 0) {
+                  setSelectedNodeId(pipeline.nodes[0].id);
+                }
+                setConfigPanelOpen(true);
+              }}
+              className="absolute right-0 top-1/3 -translate-y-1/2 z-30 flex flex-col items-center gap-1.5 py-3 px-1.5 bg-white dark:bg-slate-900 border-l border-y border-slate-200 dark:border-slate-700 rounded-l-xl shadow-xl hover:bg-blue-50 dark:hover:bg-slate-850 hover:text-blue-600 transition-all cursor-pointer group"
+              title="Open Node Configuration Panel"
+            >
+              <Settings size={15} className="text-blue-500 group-hover:rotate-45 transition-transform" />
+              <span className="[writing-mode:vertical-rl] text-[10px] font-bold tracking-wider uppercase text-slate-500 group-hover:text-blue-600">
+                Configure
+              </span>
+            </button>
+          )}
         </div>
 
-        {configPanelOpen && selectedNode && (
-          <div className="border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0 animate-slide-in-right z-20 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] overflow-hidden">
-            <ConfigPanel
-              nodeId={selectedNode.id}
-              nodeData={selectedNode.data}
-              onUpdate={handleUpdateNode}
-              onDelete={handleDeleteNode}
-              onClose={() => setConfigPanelOpen(false)}
-            />
+        {/* Dynamic & Auto-Adjustable Configuration Drawer */}
+        {configPanelOpen && (
+          <div
+            style={{ width: `${panelWidth}px` }}
+            className={`${
+              panelMode === 'overlay'
+                ? 'absolute right-0 top-0 bottom-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-2xl border-l border-slate-200 dark:border-slate-800'
+                : 'relative border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex-shrink-0'
+            } h-full flex flex-col transition-all duration-75 select-none`}
+          >
+            {/* Left Edge Drag Handle to Resize Width */}
+            <div
+              onMouseDown={startResizing}
+              className={`absolute -left-1.5 top-0 bottom-0 w-3 cursor-col-resize z-40 flex items-center justify-center hover:bg-blue-500/20 group transition-colors ${
+                isResizing ? 'bg-blue-500/30' : ''
+              }`}
+              title="Drag to resize panel width"
+            >
+              <div className="w-1 h-8 rounded-full bg-slate-300 dark:bg-slate-700 group-hover:bg-blue-500" />
+            </div>
+
+            {/* Quick Panel Mode Toolbar */}
+            <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
+              <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <SlidersHorizontal size={12} className="text-blue-500" />
+                Configure ({panelWidth}px)
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    const next = panelMode === 'docked' ? 'overlay' : 'docked';
+                    setPanelMode(next);
+                    localStorage.setItem('flowforge_config_mode', next);
+                  }}
+                  className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:text-blue-600 transition-colors"
+                  title={panelMode === 'docked' ? 'Switch to Float Overlay' : 'Switch to Docked side-by-side'}
+                >
+                  {panelMode === 'docked' ? 'Float Overlay' : 'Docked'}
+                </button>
+                <button
+                  onClick={() => setConfigPanelOpen(false)}
+                  className="p-1 hover:text-slate-800 dark:hover:text-slate-200 rounded"
+                  title="Close Panel"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content: Selected Node or Node Picker */}
+            <div className="flex-1 overflow-hidden">
+              {selectedNode ? (
+                <ConfigPanel
+                  nodeId={selectedNode.id}
+                  nodeData={selectedNode.data}
+                  onUpdate={handleUpdateNode}
+                  onDelete={handleDeleteNode}
+                  onClose={() => setConfigPanelOpen(false)}
+                />
+              ) : (
+                <div className="p-6 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center mx-auto">
+                    <SlidersHorizontal size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white">Select a Node to Configure</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Click any node on the canvas, or pick from this pipeline:
+                    </p>
+                  </div>
+                  <div className="space-y-1.5 text-left max-h-72 overflow-y-auto">
+                    {pipeline.nodes.map(n => (
+                      <button
+                        key={n.id}
+                        onClick={() => setSelectedNodeId(n.id)}
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-850 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-800 flex items-center justify-between border border-slate-200 dark:border-slate-800 transition-all text-slate-700 dark:text-slate-300"
+                      >
+                        <span className="font-semibold truncate">{n.data.label}</span>
+                        <span className="text-[10px] text-slate-400 capitalize shrink-0 ml-2">{n.data.subType}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
