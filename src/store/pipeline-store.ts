@@ -301,8 +301,9 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     if (!pipeline || pipeline.nodes.length === 0) return;
 
     const sourceNode = pipeline.nodes.find(n => n.data.category === 'source') || pipeline.nodes[0];
-    
-    // Inject schema drifted records: contact_email instead of email, $649.99 with currency symbol
+    const targetNode = pipeline.nodes.find(n => n.id !== sourceNode.id && (n.data.category === 'transform' || n.data.category === 'validation')) || pipeline.nodes[1] || sourceNode;
+
+    // 1. Inject schema drifted records: contact_email instead of email, $649.99 with currency symbol
     const driftedData = [
       { order_id: 'ORD-9001', customer_name: 'Drift Customer 1', contact_email: 'drift1@test.com', status: 'completed', amount: '$649.99', currency: 'USD' },
       { order_id: 'ORD-9002', customer_name: 'Drift Customer 2', contact_email: 'drift2@test.com', status: 'completed', amount: '$129.50', currency: 'USD' },
@@ -314,6 +315,7 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
       rowCount: driftedData.length
     });
 
+    // 2. Clear previous heal patches
     pipeline.nodes.forEach(n => {
       if (n.id !== sourceNode.id) {
         get().updateNode(pipelineId, n.id, {
@@ -322,6 +324,47 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
           healedAt: undefined
         });
       }
+    });
+
+    // 3. Create rich Drift Incident
+    const incident: any = {
+      id: `incident-${Date.now()}`,
+      nodeId: targetNode.id,
+      nodeName: targetNode.data.label || 'Filter & Transform',
+      detectedAt: new Date().toISOString(),
+      totalSampled: 3,
+      affectedRowsCount: 3,
+      sampleProblemRows: driftedData,
+      status: 'pending',
+      anomalies: [
+        {
+          field: 'email',
+          type: 'renamed_column',
+          severity: 'critical',
+          details: 'Upstream schema renamed required column "email" to "contact_email".',
+          suggestedAlias: 'contact_email',
+          expectedType: 'string',
+          sampleValue: 'drift1@test.com'
+        },
+        {
+          field: 'amount',
+          type: 'currency_symbol',
+          severity: 'warning',
+          details: 'Column "amount" received formatted currency string ("$649.99") instead of numeric float.',
+          expectedType: 'number',
+          sampleValue: '$649.99'
+        }
+      ]
+    };
+
+    // Attach incident to target node and activate in store
+    get().updateNode(pipelineId, targetNode.id, {
+      selfHealingIncident: incident
+    });
+
+    set({
+      activeDriftIncident: incident,
+      autonomousHealing: false // switch to human review so modal opens
     });
   },
 

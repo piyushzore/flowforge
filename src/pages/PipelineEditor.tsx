@@ -65,6 +65,13 @@ export default function PipelineEditor() {
   const [yamlMode, setYamlMode] = React.useState<'export' | 'import'>('export');
   const [yamlInput, setYamlInput] = React.useState('');
   const [webhookModalOpen, setWebhookModalOpen] = React.useState(false);
+  const [selfHealingModalOpen, setSelfHealingModalOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeDriftIncident) {
+      setSelfHealingModalOpen(true);
+    }
+  }, [activeDriftIncident]);
 
   // Dynamic & Auto-Adjustable Configuration Panel state
   const [panelWidth, setPanelWidth] = React.useState<number>(() => {
@@ -297,10 +304,10 @@ export default function PipelineEditor() {
           <button
             onClick={() => {
               simulateDriftOnPipeline(pipeline.id);
-              startTestRun(pipeline.id);
+              setSelfHealingModalOpen(true);
             }}
             disabled={isRunning || pipeline.nodes.length === 0}
-            className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 rounded-lg transition-colors shrink-0"
+            className="flex items-center gap-1 px-2 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 border border-amber-200 dark:border-amber-800/80 rounded-lg transition-colors shrink-0 cursor-pointer"
             title="Inject corrupted schema (renamed column + '$' currency string) to test self-healing"
           >
             <Sparkles size={12} className="text-amber-500" />
@@ -376,8 +383,8 @@ export default function PipelineEditor() {
               Dismiss
             </button>
             <button
-              onClick={() => {}} 
-              className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white font-bold rounded-lg shadow-sm text-[11px]"
+              onClick={() => setSelfHealingModalOpen(true)} 
+              className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-amber-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white font-bold rounded-lg shadow-sm text-[11px] cursor-pointer"
             >
               <Zap size={11} className="fill-white" />
               Review & Auto-Heal
@@ -660,8 +667,8 @@ export default function PipelineEditor() {
 
       {/* Autonomous Self-Healing Modal */}
       <SelfHealingModal
-        open={Boolean(activeDriftIncident)}
-        onClose={() => setActiveDriftIncident(null)}
+        open={selfHealingModalOpen && Boolean(activeDriftIncident)}
+        onClose={() => setSelfHealingModalOpen(false)}
         incident={activeDriftIncident}
         pipelineId={pipeline.id}
       />

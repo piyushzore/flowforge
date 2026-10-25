@@ -50,6 +50,7 @@ export default function SelfHealingModal({
     const patch = editedCode || solution.patchCode;
     applyHealedPatch(pipelineId, incident.nodeId, patch);
     onClose();
+    usePipelineStore.getState().startTestRun(pipelineId);
   };
 
   const handleCopyCode = () => {
