@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import {
-  X, Upload, Database, Globe, Cloud, Bot, HelpCircle,
-  AlertCircle, CheckCircle2, RefreshCw, Layers, ShieldCheck, Check
+  X, Upload, Database, Globe, Cloud, Bot,
+  AlertCircle, CheckCircle2, RefreshCw, Layers, Check
 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -11,11 +11,6 @@ import { supabase } from '../../lib/supabase';
 
 interface FieldSchema {
   name: string;
-  type: string;
-}
-
-interface ConnectDataModalProps {
-  nodeId: string;
   type: string;
 }
 
@@ -119,7 +114,7 @@ export default function ConnectDataModal() {
         if (apiHeaders) {
            try {
              headers = apiHeaders.includes('{') ? JSON.parse(apiHeaders) : { 'Content-Type': 'application/json' };
-           } catch(e) {}
+           } catch {}
         }
         
         const res = await fetch(apiUrl, { method: apiMethod, headers });
@@ -194,19 +189,6 @@ export default function ConnectDataModal() {
     });
     
     closeModal();
-  };
-
-  // fileInputRef moved above early return to comply with Rules of Hooks
-
-  const parseCsvLine = (text: string, delimiter: string) => {
-    // Basic CSV parser that handles quotes
-    const re = new RegExp(`(?:^|${delimiter})(?:"([^"]*)"|([^${delimiter}]+))`, 'g');
-    let match;
-    const values: string[] = [];
-    while ((match = re.exec(text)) !== null) {
-      values.push(match[1] !== undefined ? match[1] : match[2] || '');
-    }
-    return values;
   };
 
   const inferType = (value: any) => {

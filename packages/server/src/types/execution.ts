@@ -1,4 +1,4 @@
-import { WorkflowDefinition, WorkflowNode, WorkflowEdge } from './workflow';
+import { WorkflowNode } from '../../client/src/types/workflow';
 
 export interface ExecutionStepLog {
   stepId: string;

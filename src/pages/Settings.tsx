@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
   Settings as SettingsIcon, Key, Lock, Eye, EyeOff, Plus,
-  Trash2, Copy, CheckCircle2, AlertTriangle, Shield, Users,
-  Globe, Bell, Palette, ChevronRight
+  Trash2, Copy, CheckCircle2, AlertTriangle, Shield,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 

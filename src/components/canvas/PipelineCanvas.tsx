@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -11,7 +11,6 @@ import {
   applyEdgeChanges,
   useReactFlow,
   type Node,
-  type Edge,
   type Connection,
   type OnNodesChange,
   type OnEdgesChange,
@@ -56,7 +55,7 @@ function CanvasInner({
   onEdgesChange: setEdges,
   onNodeSelect,
   onSnapshot,
-  isRunning,
+  isRunning: _isRunning,
 }: PipelineCanvasProps) {
   const reactFlowInstance = useReactFlow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);

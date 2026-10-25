@@ -1,23 +1,19 @@
-import { useState } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { Calendar, Plus, MoreVertical, Play, Power, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, Plus, Play, Power, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Schedules() {
   const { pipelines, updatePipeline, startRun } = usePipelineStore();
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const scheduledPipelines = pipelines.filter(p => p.schedule || p.status === 'active');
 
   const toggleScheduleStatus = (pipelineId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'active' ? 'paused' : 'active';
     updatePipeline(pipelineId, { status: nextStatus });
-    setActiveMenuId(null);
   };
 
   const handleTriggerNow = (pipelineId: string) => {
     startRun(pipelineId);
-    setActiveMenuId(null);
   };
 
   return (

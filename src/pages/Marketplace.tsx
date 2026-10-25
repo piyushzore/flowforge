@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, ArrowRight, Star, Download, Zap, Filter, TrendingUp, Users, ShoppingCart, DollarSign, BarChart3, Database } from 'lucide-react';
+import { Search, ArrowRight, Star, Download, Zap, TrendingUp, Database } from 'lucide-react';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useNavigate } from 'react-router-dom';
 import type { PipelineNode, PipelineEdge } from '../types/pipeline';

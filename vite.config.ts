@@ -8,6 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@flowforge/shared-engine': path.resolve(__dirname, './packages/shared/engine/src/index.ts'),
+      '@shared/engine': path.resolve(__dirname, './packages/shared/engine/src/index.ts'),
     },
   },
 })

@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase';
 export default function Dashboard() {
   const { pipelines, runs } = usePipelineStore();
   const { instances } = useConnectorStore();
-  const { org, role, user } = useAuth();
+  const { org, role } = useAuth();
   const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
 import { executePipelineLocal } from '../engine/executor';
 import type { Pipeline, PipelineNode, PipelineEdge, PipelineNodeData, PipelineRun } from '../types/pipeline';
 // Import types and utilities

@@ -15,6 +15,13 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@flowforge/shared-engine": ["./packages/shared/engine/src/index.ts"],
+      "@flowforge/shared-engine/*": ["./packages/shared/engine/src/*"],
+      "@shared/engine": ["./packages/shared/engine/src/index.ts"],
+      "@shared/engine/*": ["./packages/shared/engine/src/*"]
+    },
 
     /* Linting */
     "noUnusedLocals": false,
@@ -22,5 +29,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "packages/shared"]
 }

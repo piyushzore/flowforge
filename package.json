@@ -1,12 +1,14 @@
 {
-  "name": "de-project",
+  "name": "flowforge",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -41,6 +43,10 @@
     "puppeteer": "^25.3.0",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^5.0.5"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.2.15"
   }
 }

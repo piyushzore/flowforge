@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useNavigate } from 'react-router-dom';
 import {
-  GitBranch, ArrowRight, Zap, ChevronRight, Network,
-  CheckCircle2, XCircle, Clock, AlertTriangle
+  GitBranch, ChevronRight, Network,
+  CheckCircle2, XCircle, Clock
 } from 'lucide-react';
 
 interface LineageNode {

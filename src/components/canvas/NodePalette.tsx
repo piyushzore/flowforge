@@ -5,10 +5,10 @@ import {
   Filter, ArrowRightLeft, Layers, Type, Hash,
   LayoutGrid, GitMerge, Merge, FunctionSquare,
   Shield, Eraser, Split, Link2, CalendarClock, Globe,
-  Bot, Terminal, Code2, Table, Columns, Search as SearchIcon,
+  Bot, Terminal, Table, Columns, Search as SearchIcon,
   GitBranch, Repeat, Clock,
   Calendar, FileInput, Play,
-  StickyNote, Target, Send, Server,
+  StickyNote,
 } from 'lucide-react';
 import type { NodeCategory, NodeSubType } from '../../types/pipeline';
 

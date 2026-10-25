@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
     let body: any = {}
     try {
       body = await req.json()
-    } catch (_e) {
+    } catch {
       body = {}
     }
     const prompt = body.prompt || 'Extract data, transform it, and load to destination'

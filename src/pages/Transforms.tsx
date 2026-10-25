@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Copy, CheckCircle2, Play, Code, Plus, Layers, Filter, Hash, GitMerge, Wand2 } from 'lucide-react';
+import { Search, Copy, CheckCircle2, Play, Code, Layers, Wand2 } from 'lucide-react';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useNavigate } from 'react-router-dom';
 

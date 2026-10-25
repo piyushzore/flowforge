@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Zap, Sparkles, Shield, ArrowRight, HelpCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Check, Sparkles } from 'lucide-react';
 
 const TIERS = [
   {

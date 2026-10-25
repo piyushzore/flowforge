@@ -148,7 +148,7 @@ export default function PipelineEditor() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [saveStatus, setSaveStatus, savePipeline, pipeline?.id]);
+  }, [saveStatus, setSaveStatus, savePipeline, pipeline]);
 
   if (!pipeline) {
     return (

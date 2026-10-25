@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   X, Globe, Copy, Check, Send, Zap, Code2, RefreshCw,
-  Terminal, Shield, Clock, Database, ChevronRight, Sparkles, ExternalLink
+  Terminal, Shield, Clock, ExternalLink
 } from 'lucide-react';
 import type { Pipeline } from '../../types/pipeline';
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Stethoscope, CheckCircle2, AlertTriangle, ArrowRight,
-  ShieldCheck, Code2, Sparkles, RefreshCw, X, Play,
+  ShieldCheck, Code2, Sparkles, RefreshCw, X,
   Zap, Copy, Check, Eye
 } from 'lucide-react';
 import type { DriftIncident } from '../../engine/drift-detector';

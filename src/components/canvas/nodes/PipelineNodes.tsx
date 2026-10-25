@@ -3,10 +3,9 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import {
   Database, FileSpreadsheet, Cloud, Upload, Webhook,
   Table, Filter, ArrowRightLeft, Columns, Hash, Type,
-  GitMerge, LayoutGrid, Layers, FunctionSquare, Wand2,
+  GitMerge, LayoutGrid, Layers, FunctionSquare,
   Code2, Search, Eraser, CalendarClock, Split, Link2,
-  Shield, Bot, Terminal,
-  Target, Send, Download, Server,
+  Shield, Bot, Terminal, Server,
   GitBranch, Merge, Repeat, Clock,
   Calendar, Globe, FileInput, Play, StickyNote,
   CheckCircle2, XCircle, Loader2, AlertCircle,
@@ -14,7 +13,7 @@ import {
 } from 'lucide-react';
 import { usePipelineStore } from '../../../store/pipeline-store';
 import { useUIStore } from '../../../store/ui-store';
-import type { PipelineNodeData, NodeCategory } from '../../../types/pipeline';
+import type { NodeCategory } from '../../../types/pipeline';
 
 // Icon mapping for node sub-types
 const nodeIcons: Record<string, React.ReactNode> = {

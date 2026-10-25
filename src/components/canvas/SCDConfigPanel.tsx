@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { PipelineNodeData, FieldSchema, SCDConfig } from '../../types/pipeline';
-import { Layers, Key, Eye, Clock, Hash, Check } from 'lucide-react';
+import { Eye, Clock, Hash } from 'lucide-react';
 
 interface Props {
   nodeData: PipelineNodeData;

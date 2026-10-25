@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, X, Send, Sparkles, Loader2, CheckCircle2, AlertCircle, ChevronDown, Wand2, Key } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Loader2, Key } from 'lucide-react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { useUIStore } from '../store/ui-store';
 import { generatePipelineWithAI, getGroqApiKey, setGroqApiKey } from '../lib/ai-service';
 
 interface Message {
@@ -40,7 +39,6 @@ export default function AIChat({ open, onClose }: AIChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { activePipelineId, pipelines, setNodes, setEdges, addNode, addEdge } = usePipelineStore();
-  const { setSelectedNodeId } = useUIStore();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,7 +79,7 @@ export default function AIChat({ open, onClose }: AIChatProps) {
         } else {
           // Canvas has nodes — offset new nodes and append
           const offsetX = pipeline ? Math.max(...pipeline.nodes.map(n => n.position.x), 0) + 350 : 0;
-          const offsetNodes = nodes.map((n: any, idx: number) => ({
+          const offsetNodes = nodes.map((n: any) => ({
             ...n,
             position: { x: n.position.x + offsetX, y: n.position.y },
           }));

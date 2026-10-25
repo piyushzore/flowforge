@@ -118,7 +118,7 @@ Layout rules:
   let parsed: any;
   try {
     parsed = JSON.parse(rawJson);
-  } catch (e) {
+  } catch {
     const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       parsed = JSON.parse(jsonMatch[0]);
@@ -199,7 +199,7 @@ Rules:
   let parsed: any;
   try {
     parsed = JSON.parse(raw);
-  } catch (e) {
+  } catch {
     const match = raw.match(/\{[\s\S]*\}/);
     if (match) parsed = JSON.parse(match[0]);
     else throw new Error('Failed to parse AI transform response');
@@ -211,7 +211,7 @@ Rules:
       // Safely evaluate arrow function for preview
       const fn = new Function('rows', `return (${parsed.code})(rows)`);
       previewResult = fn(sampleData.slice(0, 10));
-    } catch (_err) {
+    } catch {
       previewResult = [];
     }
   }

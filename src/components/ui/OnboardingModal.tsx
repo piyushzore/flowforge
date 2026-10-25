@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, Database, Layers, Play, CheckCircle2, ArrowRight } from 'lucide-react';
+import { X, Sparkles, Database, Layers, Play, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function OnboardingModal() {

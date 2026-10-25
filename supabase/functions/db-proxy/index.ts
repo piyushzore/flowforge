@@ -9,7 +9,7 @@ serve(async (req) => {
   }
 
   try {
-    const { dbType, host, port, database, username, password, query } = await req.json()
+    const { dbType, host, port: _port, database, username, password: _password, query } = await req.json()
 
     // Validate required fields
     if (!dbType || !host || !database || !username || !query) {

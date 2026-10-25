@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { Search, Filter, Calendar, Play, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Clock, Zap, Check } from 'lucide-react';
+import { Search, Play, CheckCircle2, XCircle, RefreshCw, AlertTriangle, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '../lib/supabase';
 

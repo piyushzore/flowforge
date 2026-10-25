@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { usePipelineStore } from '../store/pipeline-store';
 import {
   ShieldCheck, AlertTriangle, CheckCircle2, XCircle,
-  BarChart3, Hash, Percent, Eye, ChevronDown, ChevronUp
+  BarChart3, Hash, Percent, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface ColumnProfile {
@@ -149,7 +149,6 @@ function ColumnCard({ profile }: { profile: ColumnProfile }) {
 export default function DataQuality() {
   const { pipelines } = usePipelineStore();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
 
   const allNodes = useMemo(() => {
     const nodes: { pipelineId: string; pipelineName: string; nodeId: string; label: string; previewData: Record<string, unknown>[] }[] = [];
@@ -181,11 +180,6 @@ export default function DataQuality() {
     ? Math.round(columnProfiles.reduce((s, c) => s + c.qualityScore, 0) / columnProfiles.length)
     : 0;
 
-  const pipelinesWithData = useMemo(() => {
-    const ids = new Set(allNodes.map(n => n.pipelineId));
-    return pipelines.filter(p => ids.has(p.id));
-  }, [pipelines, allNodes]);
-
   return (
     <div className="p-8 max-w-7xl mx-auto animate-fade-in">
       {/* Header */}
@@ -216,7 +210,7 @@ export default function DataQuality() {
               ) : allNodes.map(n => (
                 <button
                   key={n.nodeId}
-                  onClick={() => { setSelectedNodeId(n.nodeId); setSelectedPipelineId(n.pipelineId); }}
+                  onClick={() => setSelectedNodeId(n.nodeId)}
                   className={`w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${selectedNodeId === n.nodeId ? 'bg-blue-50 dark:bg-blue-950/40 border-l-2 border-blue-500' : ''}`}
                 >
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{n.label}</p>

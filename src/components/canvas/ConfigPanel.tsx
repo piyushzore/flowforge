@@ -5,7 +5,6 @@ import {
   Copy,
   EyeOff,
   Eye,
-  MessageSquare,
   Settings,
   Table,
   Code,
@@ -13,30 +12,13 @@ import {
   AlertCircle,
   CheckCircle2,
   Lightbulb,
-  Filter,
-  Type,
-  Hash,
-  GitMerge,
-  LayoutGrid,
   ArrowRightLeft,
-  Layers,
   Columns,
   Shield,
-  Eraser,
-  Split,
-  Link2,
-  CalendarClock,
-  Globe,
-  Search,
   Bot,
   Terminal,
-  FunctionSquare,
   Database,
   FileSpreadsheet,
-  Cloud,
-  Calendar,
-  Webhook,
-  Play,
   RefreshCw,
   Maximize2,
   ShieldAlert,
@@ -780,7 +762,7 @@ function DeduplicateConfigContent({ nodeData, onUpdate, fields }: { nodeData: Pi
   );
 }
 
-function ScheduleConfigContent({ nodeData, onUpdate }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void }) {
+function ScheduleConfigContent({ nodeData: _nodeData, onUpdate: _onUpdate }: { nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void }) {
   return (
     <div className="space-y-4">
       <div>
@@ -827,7 +809,6 @@ function ScheduleConfigContent({ nodeData, onUpdate }: { nodeData: PipelineNodeD
 import { useUIStore } from '../../store/ui-store';
 
 function ConnectionConfigContent({ nodeId, nodeData, onUpdate, fields = [] }: { nodeId: string; nodeData: PipelineNodeData; onUpdate: (d: Partial<PipelineNodeData>) => void; fields?: FieldSchema[] }) {
-  const isSource = nodeData.category === 'source';
   const isDestination = nodeData.category === 'destination';
   const openModal = useUIStore(s => s.openModal);
 
@@ -1385,8 +1366,8 @@ function CustomCodeConfigContent({
 
 // ─── Webhook Configuration Content ───────────────────────────────────────────
 function WebhookConfigContent({
-  nodeData,
-  onUpdate,
+  nodeData: _nodeData,
+  onUpdate: _onUpdate,
   pipelineId
 }: {
   nodeData: PipelineNodeData;
