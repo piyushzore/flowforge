@@ -20,6 +20,9 @@ export function executeJoin(
   const getKey = (row: Record<string, any>, keys: string[]): string | null => {
     const vals = keys.map(k => row[k]);
     if (vals.some(v => v === null || v === undefined || v === '')) return null;
+    if (config.typeInsensitive) {
+      return JSON.stringify(vals.map(v => String(v).trim()));
+    }
     return JSON.stringify(vals);
   };
 
@@ -135,6 +138,78 @@ export function executeUnion(datasets: Record<string, any>[][]): Record<string, 
 }
 
 // ─── 3. FILTER ───────────────────────────────────────────────────────────
+export function evaluateCondition(row: Record<string, any>, cond: FilterCondition): boolean {
+  const val = row[cond.field];
+  const target = cond.value;
+
+  // Null operators
+  if (cond.operator === 'is-null') {
+    return val === null || val === undefined || val === '';
+  }
+  if (cond.operator === 'is-not-null') {
+    return val !== null && val !== undefined && val !== '';
+  }
+
+  // If value is null/undefined and not checking nullity, standard comparisons return false (SQL 3-value logic)
+  if (val === null || val === undefined) {
+    return false;
+  }
+
+  switch (cond.operator) {
+    case 'equals':
+      if (typeof val === 'number' && typeof target === 'number') return val === target;
+      return String(val) === String(target ?? '');
+    case 'not-equals':
+      if (typeof val === 'number' && typeof target === 'number') return val !== target;
+      return String(val) !== String(target ?? '');
+    case 'contains':
+      return String(val).toLowerCase().includes(String(target ?? '').toLowerCase());
+    case 'not-contains':
+      return !String(val).toLowerCase().includes(String(target ?? '').toLowerCase());
+    case 'starts-with':
+      return String(val).startsWith(String(target ?? ''));
+    case 'ends-with':
+      return String(val).endsWith(String(target ?? ''));
+    case 'greater-than': {
+      const numV = Number(val);
+      const numT = Number(target);
+      return !isNaN(numV) && !isNaN(numT) && numV > numT;
+    }
+    case 'less-than': {
+      const numV = Number(val);
+      const numT = Number(target);
+      return !isNaN(numV) && !isNaN(numT) && numV < numT;
+    }
+    case 'gte': {
+      const numV = Number(val);
+      const numT = Number(target);
+      return !isNaN(numV) && !isNaN(numT) && numV >= numT;
+    }
+    case 'lte': {
+      const numV = Number(val);
+      const numT = Number(target);
+      return !isNaN(numV) && !isNaN(numT) && numV <= numT;
+    }
+    case 'in': {
+      const list = Array.isArray(target) ? target : String(target).split(',').map(s => s.trim());
+      return list.map(String).includes(String(val));
+    }
+    case 'not-in': {
+      const list = Array.isArray(target) ? target : String(target).split(',').map(s => s.trim());
+      return !list.map(String).includes(String(val));
+    }
+    case 'regex': {
+      try {
+        return new RegExp(String(target)).test(String(val));
+      } catch {
+        return false;
+      }
+    }
+    default:
+      return true;
+  }
+}
+
 export function executeFilter(
   data: Record<string, any>[],
   conditions: FilterCondition[] = []
@@ -142,54 +217,19 @@ export function executeFilter(
   if (!Array.isArray(conditions) || conditions.length === 0) return data;
 
   return data.filter(row => {
-    return conditions.every(cond => {
-      const val = row[cond.field];
-      const target = cond.value;
-
-      switch (cond.operator) {
-        case 'equals':
-          return String(val ?? '') === String(target ?? '');
-        case 'not-equals':
-          return String(val ?? '') !== String(target ?? '');
-        case 'contains':
-          return String(val ?? '').toLowerCase().includes(String(target ?? '').toLowerCase());
-        case 'not-contains':
-          return !String(val ?? '').toLowerCase().includes(String(target ?? '').toLowerCase());
-        case 'starts-with':
-          return String(val ?? '').startsWith(String(target ?? ''));
-        case 'ends-with':
-          return String(val ?? '').endsWith(String(target ?? ''));
-        case 'greater-than':
-          return Number(val) > Number(target);
-        case 'less-than':
-          return Number(val) < Number(target);
-        case 'gte':
-          return Number(val) >= Number(target);
-        case 'lte':
-          return Number(val) <= Number(target);
-        case 'is-null':
-          return val === null || val === undefined || val === '';
-        case 'is-not-null':
-          return val !== null && val !== undefined && val !== '';
-        case 'in': {
-          const list = Array.isArray(target) ? target : String(target).split(',').map(s => s.trim());
-          return list.includes(String(val));
-        }
-        case 'not-in': {
-          const list = Array.isArray(target) ? target : String(target).split(',').map(s => s.trim());
-          return !list.includes(String(val));
-        }
-        case 'regex': {
-          try {
-            return new RegExp(String(target)).test(String(val ?? ''));
-          } catch {
-            return false;
-          }
-        }
-        default:
-          return true;
+    let result = true;
+    for (let i = 0; i < conditions.length; i++) {
+      const cond = conditions[i];
+      const match = evaluateCondition(row, cond);
+      if (i === 0) {
+        result = match;
+      } else if (cond.logic === 'OR') {
+        result = result || match;
+      } else {
+        result = result && match;
       }
-    });
+    }
+    return result;
   });
 }
 
@@ -210,12 +250,15 @@ export function executeSort(
     ? [{ field: sortOptions.sortBy, order: sortOptions.order || 'asc', nulls: sortOptions.nulls || 'last' }]
     : [];
 
-  if (options.length === 0) return [...data];
+  if (options.length === 0 || data.length <= 1) return [...data];
 
-  return [...data].sort((a, b) => {
+  // Guaranteed stable sort via indexed array
+  const indexed = data.map((item, index) => ({ item, index }));
+
+  indexed.sort((a, b) => {
     for (const opt of options) {
-      const va = a[opt.field];
-      const vb = b[opt.field];
+      const va = a.item[opt.field];
+      const vb = b.item[opt.field];
       const orderFactor = opt.order === 'desc' ? -1 : 1;
       const nullsFirst = opt.nulls === 'first';
 
@@ -226,6 +269,19 @@ export function executeSort(
       if (aNull) return nullsFirst ? -1 : 1;
       if (bNull) return nullsFirst ? 1 : -1;
 
+      // Boolean comparison
+      if (typeof va === 'boolean' && typeof vb === 'boolean') {
+        if (va !== vb) return (va ? 1 : -1) * orderFactor;
+        continue;
+      }
+
+      // Date comparison
+      if (va instanceof Date && vb instanceof Date) {
+        const diff = va.getTime() - vb.getTime();
+        if (diff !== 0) return (diff < 0 ? -1 : 1) * orderFactor;
+        continue;
+      }
+
       // Numeric comparison
       const numA = typeof va === 'number' ? va : Number(va);
       const numB = typeof vb === 'number' ? vb : Number(vb);
@@ -234,14 +290,17 @@ export function executeSort(
         continue;
       }
 
-      // String comparison
+      // String natural comparison
       const sa = String(va);
       const sb = String(vb);
-      const cmp = sa.localeCompare(sb);
+      const cmp = sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' });
       if (cmp !== 0) return cmp * orderFactor;
     }
-    return 0;
+    // Stable tie-breaker
+    return a.index - b.index;
   });
+
+  return indexed.map(entry => entry.item);
 }
 
 // ─── 5. DEDUPLICATE ──────────────────────────────────────────────────────
@@ -338,7 +397,7 @@ export function executeGroupBy(
 
       switch (agg.function) {
         case 'sum':
-          outRow[alias] = numericVals.reduce((a, b) => a + b, 0);
+          outRow[alias] = numericVals.length > 0 ? numericVals.reduce((a, b) => a + b, 0) : null;
           break;
         case 'avg':
           outRow[alias] = numericVals.length > 0 ? numericVals.reduce((a, b) => a + b, 0) / numericVals.length : null;
@@ -599,26 +658,58 @@ export function executeSCD(
   scdConfig: SCDConfig = {}
 ): Record<string, any>[] {
   const trackCols = scdConfig.trackColumns || [];
+  const now = new Date().toISOString();
 
-  if (scdType === 'scd-type-2') {
-    return data.map(row => ({
-      ...row,
-      ...(scdConfig.autoColumns?.effectiveDate ? { effective_date: new Date().toISOString() } : {}),
-      ...(scdConfig.autoColumns?.endDate ? { end_date: null } : {}),
-      ...(scdConfig.autoColumns?.isCurrent ? { is_current: true } : {}),
-      ...(scdConfig.autoColumns?.version ? { version: 1 } : {})
-    }));
+  switch (scdType) {
+    case 'scd-type-0':
+    case 'scd-type-1':
+      // Type 0 retains original, Type 1 overwrites attributes in place
+      return data.map(r => ({ ...r }));
+
+    case 'scd-type-2':
+      // Type 2: Adds historical tracking columns
+      return data.map(row => ({
+        ...row,
+        ...(scdConfig.autoColumns?.effectiveDate !== false ? { effective_date: now } : {}),
+        ...(scdConfig.autoColumns?.endDate !== false ? { end_date: null } : {}),
+        ...(scdConfig.autoColumns?.isCurrent !== false ? { is_current: true } : {}),
+        ...(scdConfig.autoColumns?.version !== false ? { version: 1 } : {})
+      }));
+
+    case 'scd-type-3':
+      // Type 3: Adds previous_{column} tracking
+      return data.map(row => {
+        const copy = { ...row };
+        for (const col of trackCols) {
+          copy[`previous_${col}`] = null;
+        }
+        return copy;
+      });
+
+    case 'scd-type-4':
+      // Type 4: Separate history table tagging
+      return data.map(row => ({
+        ...row,
+        _scd_history_synced_at: now
+      }));
+
+    case 'scd-type-6':
+      // Type 6 (1 + 2 + 3 hybrid): Historical metadata + previous column
+      return data.map(row => {
+        const copy: Record<string, any> = {
+          ...row,
+          ...(scdConfig.autoColumns?.effectiveDate !== false ? { effective_date: now } : {}),
+          ...(scdConfig.autoColumns?.endDate !== false ? { end_date: null } : {}),
+          ...(scdConfig.autoColumns?.isCurrent !== false ? { is_current: true } : {}),
+          ...(scdConfig.autoColumns?.version !== false ? { version: 1 } : {})
+        };
+        for (const col of trackCols) {
+          copy[`previous_${col}`] = null;
+        }
+        return copy;
+      });
+
+    default:
+      return data.map(r => ({ ...r }));
   }
-
-  if (scdType === 'scd-type-3') {
-    return data.map(row => {
-      const copy = { ...row };
-      for (const col of trackCols) {
-        copy[`previous_${col}`] = null;
-      }
-      return copy;
-    });
-  }
-
-  return [...data];
 }

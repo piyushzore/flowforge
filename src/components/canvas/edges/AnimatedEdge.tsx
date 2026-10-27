@@ -32,13 +32,16 @@ export default function AnimatedEdge({
     running: { stroke: '#22d3ee', glow: 'drop-shadow(0 0 4px #22d3ee)',      particle: '#22d3ee' },
     success: { stroke: '#22c55e', glow: 'drop-shadow(0 0 6px #22c55e80)',    particle: '#22c55e' },
     failed:  { stroke: '#ef4444', glow: 'drop-shadow(0 0 8px #ef444480)',    particle: '#ef4444' },
+    cycle:   { stroke: '#ef4444', glow: 'drop-shadow(0 0 10px #ef4444)',      particle: '#ef4444' },
     streaming: { stroke: '#22c55e', glow: 'drop-shadow(0 0 4px #22c55e60)', particle: '#22c55e' },
   };
 
-  const colors = colorMap[status || 'idle'] || colorMap.idle;
+  const isCycle = Boolean((data as any)?.isCycle || status === 'cycle');
+  const effectiveStatus = isCycle ? 'cycle' : (status || 'idle');
+  const colors = colorMap[effectiveStatus] || colorMap.idle;
   const isActive = status === 'running' || status === 'streaming';
   const isSuccess = status === 'success';
-  const isFailed = status === 'failed';
+  const isFailed = status === 'failed' || isCycle;
 
   // Unique gradient ID per edge
   const gradientId = `edge-gradient-${id}`;
@@ -96,13 +99,13 @@ export default function AnimatedEdge({
         style={{
           ...style,
           stroke: colors.stroke,
-          strokeWidth: isActive ? 2.5 : isSuccess ? 2 : isFailed ? 2.5 : 1.5,
+          strokeWidth: isCycle ? 3 : isActive ? 2.5 : isSuccess ? 2 : isFailed ? 2.5 : 1.5,
           filter: (isActive || isSuccess || isFailed) ? `url(#${filterId})` : 'none',
           transition: 'stroke 0.4s ease, stroke-width 0.3s ease',
-          ...(isActive ? { strokeDasharray: '8 4' } : {}),
+          ...(isCycle ? { strokeDasharray: '6 4' } : isActive ? { strokeDasharray: '8 4' } : {}),
         }}
         markerEnd={markerEnd}
-        className={isActive ? 'edge-dash-flow' : ''}
+        className={isCycle ? 'animate-pulse' : isActive ? 'edge-dash-flow' : ''}
       />
 
       {/* Flowing data particles — multiple for streaming */}

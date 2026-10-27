@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { executePipelineLocal } from '../engine/executor';
+import { executePipelineLocal, topoSortDetailed, cancelPipelineExecution } from '../engine/executor';
 import type { Pipeline, PipelineNode, PipelineEdge, PipelineNodeData, PipelineRun } from '../types/pipeline';
 // Import types and utilities
 
@@ -370,6 +370,7 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   setProcessingMode: (mode) => set({ processingMode: mode }),
 
   stopRun: () => {
+    cancelPipelineExecution();
     const timers = get()._runTimers;
     timers.forEach(t => clearTimeout(t));
 
@@ -391,6 +392,52 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     if (!pipeline || pipeline.nodes.length === 0) return;
     
     get().stopRun();
+
+    // Pre-flight Cycle Detection (Phase 1a)
+    const cycleCheck = topoSortDetailed(pipeline.nodes, pipeline.edges);
+    if (cycleCheck.hasCycle) {
+      const offendingEdges = new Set(cycleCheck.cycleEdgeIds || []);
+      const cycleNodes = new Set(cycleCheck.cycleNodes || []);
+
+      const updatedEdges = pipeline.edges.map(e => ({
+        ...e,
+        data: {
+          ...(e.data || {}),
+          status: offendingEdges.has(e.id) ? 'failed' : 'idle',
+          isCycle: offendingEdges.has(e.id)
+        }
+      }));
+      get().setEdges(pipelineId, updatedEdges);
+
+      const updatedNodes = pipeline.nodes.map(n => ({
+        ...n,
+        data: {
+          ...n.data,
+          runStatus: cycleNodes.has(n.id) ? 'failed' : 'idle',
+        } as PipelineNodeData
+      }));
+      get().setNodes(pipelineId, updatedNodes);
+
+      set({
+        isRunning: false,
+        runningPipelineId: null,
+        runStats: {
+          totalRows: 0,
+          processedRows: 0,
+          failedRows: 0,
+          throughput: 0,
+          latency: 0,
+          startTime: Date.now(),
+          elapsedMs: 0,
+          nodesCompleted: 0,
+          nodesTotal: pipeline.nodes.length,
+          currentNodeId: null,
+          errorNodeId: cycleCheck.cycleNodes?.[0] || null,
+          errorMessage: cycleCheck.errorMessage || 'Cycle detected'
+        }
+      });
+      return;
+    }
     
     const startTime = Date.now();
     

@@ -54,6 +54,7 @@ export interface JoinConfig {
   rightKeys?: string[];
   leftPrefix?: string;
   rightPrefix?: string;
+  typeInsensitive?: boolean;
 }
 
 export interface ValidationRule {

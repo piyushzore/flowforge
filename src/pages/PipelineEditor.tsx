@@ -8,10 +8,11 @@ import SelfHealingModal from '../components/canvas/SelfHealingModal';
 import WebhookApiModal from '../components/canvas/WebhookApiModal';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
+import { topoSortDetailed } from '../engine/executor';
 import {
   Play, Square, Save, History, Settings, MousePointer2,
   Layers, Cpu, Radio, Code, X, Copy, Sparkles, FileText, FileDown, Upload,
-  Stethoscope, Zap, Globe, SlidersHorizontal
+  Stethoscope, Zap, Globe, SlidersHorizontal, AlertCircle
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
 import { exportPipelineToYaml, downloadPipelineYaml, importPipelineFromYaml } from '../utils/pipeline-yaml';
@@ -149,6 +150,11 @@ export default function PipelineEditor() {
       return () => clearTimeout(timer);
     }
   }, [saveStatus, setSaveStatus, savePipeline, pipeline]);
+
+  const cycleInfo = React.useMemo(() => {
+    if (!pipeline) return { hasCycle: false, sortedIds: [] };
+    return topoSortDetailed(pipeline.nodes, pipeline.edges);
+  }, [pipeline]);
 
   if (!pipeline) {
     return (
@@ -349,7 +355,8 @@ export default function PipelineEditor() {
           ) : (
             <button 
               onClick={() => startTestRun(pipeline.id)}
-              disabled={pipeline.nodes.length === 0}
+              disabled={pipeline.nodes.length === 0 || cycleInfo.hasCycle}
+              title={cycleInfo.hasCycle ? cycleInfo.errorMessage : undefined}
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-[12px] font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-all shadow-sm hover:shadow shrink-0"
             >
               <Play size={14} />
@@ -363,6 +370,20 @@ export default function PipelineEditor() {
           </button>
         </div>
       </div>
+
+      {/* Cycle Detection Alert Banner */}
+      {cycleInfo.hasCycle && (
+        <div className="bg-red-500/15 border-b border-red-300 dark:border-red-800 px-4 py-2 flex items-center justify-between text-xs z-20 animate-in slide-in-from-top-2 text-red-900 dark:text-red-200">
+          <div className="flex items-center gap-2">
+            <div className="p-1 bg-red-600 text-white rounded-md animate-pulse">
+              <AlertCircle size={13} />
+            </div>
+            <span>
+              <strong>Pipeline Cycle Detected:</strong> <span className="font-mono font-semibold">{cycleInfo.errorMessage}</span>. Run is blocked until circular dependencies are resolved.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Self-Healing Drift Alert Banner */}
       {activeDriftIncident && (

@@ -9,6 +9,53 @@ export interface TopoSortResult {
 }
 
 /**
+ * Finds the exact cycle path among the remaining nodes using DFS with backtracking.
+ */
+function findCyclePath(nodes: string[], adj: Map<string, string[]>): string[] {
+  const nodeSet = new Set(nodes);
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+  const parent = new Map<string, string>();
+  let cycle: string[] = [];
+
+  function dfs(curr: string): boolean {
+    visited.add(curr);
+    inStack.add(curr);
+
+    const neighbors = adj.get(curr) || [];
+    for (const next of neighbors) {
+      if (!nodeSet.has(next)) continue;
+      if (!visited.has(next)) {
+        parent.set(next, curr);
+        if (dfs(next)) return true;
+      } else if (inStack.has(next)) {
+        // Cycle detected: trace path from next back through parents to curr, then next
+        const path: string[] = [next];
+        let p: string | undefined = curr;
+        while (p && p !== next) {
+          path.push(p);
+          p = parent.get(p);
+        }
+        path.push(next);
+        cycle = path.reverse();
+        return true;
+      }
+    }
+
+    inStack.delete(curr);
+    return false;
+  }
+
+  for (const n of nodes) {
+    if (!visited.has(n)) {
+      if (dfs(n)) break;
+    }
+  }
+
+  return cycle.length > 0 ? cycle : nodes;
+}
+
+/**
  * Topologically sorts DAG nodes using Kahn's algorithm and detects cycles with path tracking.
  */
 export function topoSortDetailed<
@@ -58,25 +105,34 @@ export function topoSortDetailed<
 
   // Cycle detected: identify offending nodes (remaining nodes with inDeg > 0)
   const remainingNodes = nodes.filter(n => (inDeg.get(n.id) || 0) > 0).map(n => n.id);
+  const cyclePath = findCyclePath(remainingNodes, adj);
+  const cycleDesc = cyclePath.join(' → ');
+  const errorMessage = `Cycle detected: ${cycleDesc}`;
+
+  // Collect offending edges forming the cycle
   const cycleEdges: string[] = [];
+  for (let i = 0; i < cyclePath.length - 1; i++) {
+    const edgeId = edgeMap.get(`${cyclePath[i]}->${cyclePath[i + 1]}`);
+    if (edgeId && !cycleEdges.includes(edgeId)) {
+      cycleEdges.push(edgeId);
+    }
+  }
+
+  // Also include any other edges between remaining cycle nodes
   remainingNodes.forEach(src => {
     const targets = adj.get(src) || [];
     targets.forEach(tgt => {
       if (remainingNodes.includes(tgt)) {
         const edgeId = edgeMap.get(`${src}->${tgt}`);
-        if (edgeId) cycleEdges.push(edgeId);
+        if (edgeId && !cycleEdges.includes(edgeId)) cycleEdges.push(edgeId);
       }
     });
   });
 
-  // Build cycle path description if possible
-  const cycleDesc = remainingNodes.slice(0, 4).join(' → ') + ' → ' + remainingNodes[0];
-  const errorMessage = `Cycle detected in pipeline graph: ${cycleDesc}`;
-
   return {
     sortedIds,
     hasCycle: true,
-    cycleNodes: remainingNodes,
+    cycleNodes: Array.from(new Set(cyclePath)),
     cycleEdgeIds: cycleEdges,
     errorMessage
   };

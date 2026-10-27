@@ -44,6 +44,26 @@ describe('Topological Sort & Cycle Detection', () => {
     expect(detailed.errorMessage).toContain('Cycle detected');
     expect(() => topoSort(nodes, edges)).toThrow(/Cycle detected/);
   });
+
+  it('detects two-node cycles and produces exact format ("Cycle detected: b → c → b")', () => {
+    const nodes: EngineNode[] = [
+      { id: 'a', data: {} },
+      { id: 'b', data: {} },
+      { id: 'c', data: {} }
+    ];
+    const edges: EngineEdge[] = [
+      { id: 'e1', source: 'a', target: 'b' },
+      { id: 'e2', source: 'b', target: 'c' },
+      { id: 'e3', source: 'c', target: 'b' } // cycle b -> c -> b
+    ];
+
+    const detailed = topoSortDetailed(nodes, edges);
+    expect(detailed.hasCycle).toBe(true);
+    expect(detailed.errorMessage).toBe('Cycle detected: b → c → b');
+    expect(detailed.cycleEdgeIds).toContain('e2');
+    expect(detailed.cycleEdgeIds).toContain('e3');
+    expect(() => topoSort(nodes, edges)).toThrow('Cycle detected: b → c → b');
+  });
 });
 
 describe('Aggregations (Group By)', () => {
@@ -103,6 +123,27 @@ describe('Aggregations (Group By)', () => {
     expect(result[0].cnt_non_null).toBe(3); // 10, 'invalid', 20
     expect(result[0].cnt_rows).toBe(6);
     expect(result[0].distinct_cnt).toBe(3);
+  });
+
+  it('returns null when an entire column has only nulls or non-numeric values', () => {
+    const data = [
+      { id: 1, val: null },
+      { id: 2, val: undefined },
+      { id: 3, val: '' },
+      { id: 4, val: 'not_a_number' }
+    ];
+
+    const res = executeGroupBy(data, [], [
+      { field: 'val', function: 'sum', alias: 's' },
+      { field: 'val', function: 'avg', alias: 'a' },
+      { field: 'val', function: 'min', alias: 'm' },
+      { field: 'val', function: 'max', alias: 'mx' }
+    ]);
+
+    expect(res[0].s).toBeNull();
+    expect(res[0].a).toBeNull();
+    expect(res[0].m).toBeNull();
+    expect(res[0].mx).toBeNull();
   });
 });
 
@@ -187,6 +228,37 @@ describe('Hash Join', () => {
     const full = executeJoin(left, right, { joinType: 'full', leftField: 'id', rightField: 'id' });
     expect(full).toHaveLength(2);
   });
+
+  it('supports multi-column keys and type-insensitive matching option', () => {
+    const left = [
+      { org: 'acme', code: 101, dept: 'Sales' },
+      { org: 'acme', code: '102', dept: 'Support' }
+    ];
+    const right = [
+      { orgId: 'acme', codeId: '101', budget: 5000 },
+      { orgId: 'acme', codeId: '102', budget: 3000 }
+    ];
+
+    // By default: strict type matching ('101' string does not match 101 number)
+    const strictJoin = executeJoin(left, right, {
+      joinType: 'inner',
+      leftKeys: ['org', 'code'],
+      rightKeys: ['orgId', 'codeId'],
+      typeInsensitive: false
+    });
+    // code: '102' matches codeId: '102', but code: 101 does NOT match codeId: '101'
+    expect(strictJoin).toHaveLength(1);
+    expect(strictJoin[0].dept).toBe('Support');
+
+    // With typeInsensitive: true, both match
+    const looseJoin = executeJoin(left, right, {
+      joinType: 'inner',
+      leftKeys: ['org', 'code'],
+      rightKeys: ['orgId', 'codeId'],
+      typeInsensitive: true
+    });
+    expect(looseJoin).toHaveLength(2);
+  });
 });
 
 describe('Deduplication', () => {
@@ -228,6 +300,40 @@ describe('Sorting', () => {
 
     const desc = executeSort(data, { sortBy: 'score', order: 'desc', nulls: 'first' });
     expect(desc.map(r => r.score)).toEqual([null, '100', '20', '5']);
+  });
+
+  it('supports multi-column sorting and guaranteed stability', () => {
+    const data = [
+      { dept: 'engineering', salary: 100, name: 'Alice' },
+      { dept: 'engineering', salary: 80, name: 'Bob' },
+      { dept: 'sales', salary: 90, name: 'Charlie' },
+      { dept: 'engineering', salary: 100, name: 'David' }
+    ];
+
+    const sorted = executeSort(data, [
+      { field: 'dept', order: 'asc' },
+      { field: 'salary', order: 'desc' }
+    ]);
+
+    expect(sorted[0].name).toBe('Alice'); // 100
+    expect(sorted[1].name).toBe('David'); // 100 (stable: Alice came before David in original array)
+    expect(sorted[2].name).toBe('Bob');   // 80
+    expect(sorted[3].name).toBe('Charlie');
+  });
+
+  it('handles boolean and date types in sorting', () => {
+    const d1 = new Date('2026-01-01');
+    const d2 = new Date('2026-06-01');
+    const data = [
+      { date: d2, flag: true },
+      { date: d1, flag: false }
+    ];
+
+    const sortedByDate = executeSort(data, [{ field: 'date', order: 'asc' }]);
+    expect(sortedByDate[0].date).toBe(d1);
+
+    const sortedByFlag = executeSort(data, [{ field: 'flag', order: 'asc' }]);
+    expect(sortedByFlag[0].flag).toBe(false);
   });
 });
 

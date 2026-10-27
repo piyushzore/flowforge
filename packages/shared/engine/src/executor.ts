@@ -23,6 +23,7 @@ export interface NodeExecutionOutcome {
   data: Record<string, any>[];
   warnings?: NodeWarning[];
   error?: string;
+  progress?: number;
 }
 
 /**
@@ -38,7 +39,9 @@ export async function executePipelineCore(
   const sortedIds = topoSort(nodes, edges);
   const results = new Map<string, Record<string, any>[]>();
 
-  for (const nodeId of sortedIds) {
+  for (let i = 0; i < sortedIds.length; i++) {
+    const nodeId = sortedIds[i];
+    const progress = Math.round(((i + 1) / sortedIds.length) * 100);
     const node = nodes.find(n => n.id === nodeId);
     if (!node) continue;
 
@@ -54,7 +57,7 @@ export async function executePipelineCore(
       if (category === 'source' || subType === 'webhook' || subType === 'webhook-trigger') {
         const data = Array.isArray(node.data.previewData) ? [...node.data.previewData] : [];
         results.set(nodeId, data);
-        onNodeComplete?.({ nodeId, data, warnings });
+        onNodeComplete?.({ nodeId, data, warnings, progress });
         continue;
       }
 
@@ -63,7 +66,7 @@ export async function executePipelineCore(
         const incomingEdges = edges.filter(e => e.target === nodeId);
         if (incomingEdges.length === 0) {
           results.set(nodeId, []);
-          onNodeComplete?.({ nodeId, data: [], warnings });
+          onNodeComplete?.({ nodeId, data: [], warnings, progress });
           continue;
         }
 
@@ -181,7 +184,7 @@ export async function executePipelineCore(
         }
 
         results.set(nodeId, outputData);
-        onNodeComplete?.({ nodeId, data: outputData, warnings });
+        onNodeComplete?.({ nodeId, data: outputData, warnings, progress });
         continue;
       }
 
@@ -190,15 +193,15 @@ export async function executePipelineCore(
         const incomingEdges = edges.filter(e => e.target === nodeId);
         const inputData = incomingEdges.length > 0 ? results.get(incomingEdges[0].source) || [] : [];
         results.set(nodeId, inputData);
-        onNodeComplete?.({ nodeId, data: inputData, warnings });
+        onNodeComplete?.({ nodeId, data: inputData, warnings, progress });
         continue;
       }
 
       // Other nodes (note, control, etc.)
       results.set(nodeId, []);
-      onNodeComplete?.({ nodeId, data: [], warnings });
+      onNodeComplete?.({ nodeId, data: [], warnings, progress });
     } catch (err: any) {
-      onNodeComplete?.({ nodeId, data: [], error: err.message, warnings });
+      onNodeComplete?.({ nodeId, data: [], error: err.message, warnings, progress });
       throw err;
     }
   }
