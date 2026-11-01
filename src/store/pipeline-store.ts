@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { executePipelineLocal, topoSortDetailed, cancelPipelineExecution } from '../engine/executor';
+import { executePipelineLocal, cancelPipelineExecution } from '../engine/executor';
 import type { Pipeline, PipelineNode, PipelineEdge, PipelineNodeData, PipelineRun } from '../types/pipeline';
 import { supabase } from '../lib/supabase';
+import { validatePipelinePreFlight } from '../utils/pipeline-validator';
 // Import types and utilities
 
 export type ProcessingMode = 'batch' | 'stream' | 'micro-batch';
@@ -393,27 +394,17 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     
     get().stopRun();
 
-    // Pre-flight Cycle Detection (Phase 1a)
-    const cycleCheck = topoSortDetailed(pipeline.nodes, pipeline.edges);
-    if (cycleCheck.hasCycle) {
-      const offendingEdges = new Set(cycleCheck.cycleEdgeIds || []);
-      const cycleNodes = new Set(cycleCheck.cycleNodes || []);
-
-      const updatedEdges = pipeline.edges.map(e => ({
-        ...e,
-        data: {
-          ...(e.data || {}),
-          status: offendingEdges.has(e.id) ? 'failed' : 'idle',
-          isCycle: offendingEdges.has(e.id)
-        }
-      }));
-      get().setEdges(pipelineId, updatedEdges);
+    // Comprehensive Pre-flight Graph & Config Validation (Phase 4)
+    const validation = validatePipelinePreFlight(pipeline.nodes, pipeline.edges);
+    if (!validation.valid) {
+      const offendingNodes = validation.errorNodeIds;
+      const primaryError = validation.issues.find(i => i.severity === 'error')?.message || 'Pipeline validation failed.';
 
       const updatedNodes = pipeline.nodes.map(n => ({
         ...n,
         data: {
           ...n.data,
-          runStatus: cycleNodes.has(n.id) ? 'failed' : 'idle',
+          runStatus: offendingNodes.has(n.id) ? 'failed' : 'idle',
         } as PipelineNodeData
       }));
       get().setNodes(pipelineId, updatedNodes);
@@ -432,8 +423,8 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
           nodesCompleted: 0,
           nodesTotal: pipeline.nodes.length,
           currentNodeId: null,
-          errorNodeId: cycleCheck.cycleNodes?.[0] || null,
-          errorMessage: cycleCheck.errorMessage || 'Cycle detected'
+          errorNodeId: Array.from(offendingNodes)[0] || null,
+          errorMessage: primaryError
         }
       });
       return;

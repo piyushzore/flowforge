@@ -6,6 +6,7 @@ import TopBar from './TopBar';
 import ConnectDataModal from '../canvas/ConnectDataModal';
 import ShortcutsModal from '../ui/ShortcutsModal';
 import OnboardingModal from '../ui/OnboardingModal';
+import { OfflineBanner } from '../ui/OfflineBanner';
 
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -53,6 +54,7 @@ export default function AppLayout() {
             : 'ml-[240px] max-w-[calc(100vw-240px)]'
         }`}
       >
+        <OfflineBanner />
         <TopBar
           onToggleTheme={toggleTheme}
           isDark={isDark}

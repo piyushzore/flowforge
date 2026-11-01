@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { currentUser, workspaces } from '../data/mock-users';
+import { currentUser as demoUser, workspaces as demoWorkspaces } from '../data/mock-users';
 import type { User, Workspace, AuditEntry } from '../types/common';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,15 +8,32 @@ interface UserState {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
   auditLog: AuditEntry[];
+  isDemoMode: boolean;
   
+  loadDemoWorkspace: () => void;
+  setCurrentUser: (user: User | null) => void;
   addAuditLog: (action: string, resourceType: string, resourceId: string, details?: any) => void;
 }
 
 export const useUserStore = create<UserState>()((set, get) => ({
-  currentUser,
-  workspaces,
-  activeWorkspaceId: workspaces[0]?.id || null,
+  currentUser: null,
+  workspaces: [],
+  activeWorkspaceId: null,
   auditLog: [],
+  isDemoMode: false,
+
+  loadDemoWorkspace: () => {
+    set({
+      currentUser: demoUser,
+      workspaces: demoWorkspaces,
+      activeWorkspaceId: demoWorkspaces[0]?.id || null,
+      isDemoMode: true
+    });
+  },
+
+  setCurrentUser: (user) => {
+    set({ currentUser: user });
+  },
   
   addAuditLog: (action, targetType, targetId, details) => {
     const entry: AuditEntry = {
