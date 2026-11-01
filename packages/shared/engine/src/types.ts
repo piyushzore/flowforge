@@ -114,6 +114,7 @@ export interface EngineNodeData {
   subType?: NodeSubType;
   config?: Record<string, any>;
   previewData?: any[];
+  fullData?: any[];
   conditions?: FilterCondition[];
   renames?: Array<{ oldName: string; newName: string }> | Record<string, string>;
   groupByFields?: string[];

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { executePipelineLocal, topoSortDetailed, cancelPipelineExecution } from '../engine/executor';
 import type { Pipeline, PipelineNode, PipelineEdge, PipelineNodeData, PipelineRun } from '../types/pipeline';
+import { supabase } from '../lib/supabase';
 // Import types and utilities
 
 export type ProcessingMode = 'batch' | 'stream' | 'micro-batch';
@@ -137,7 +138,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
       activePipelineId: state.activePipelineId === id ? null : state.activePipelineId
     }));
     try {
-      const { supabase } = await import('../lib/supabase');
       await supabase.from('pipelines').delete().eq('id', id);
     } catch (e) {
       console.error('Failed to delete pipeline', e);
@@ -524,7 +524,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   runs: [],
   loadRuns: async () => {
     try {
-      const { supabase } = await import('../lib/supabase');
       const { data, error } = await supabase
         .from('pipeline_runs')
         .select('*')
@@ -561,7 +560,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     set(state => ({ runs: [run, ...state.runs] }));
 
     try {
-      const { supabase } = await import('../lib/supabase');
       const { data: userData } = await supabase.auth.getUser();
       let orgId: string | null = null;
       if (userData?.user) {
@@ -624,7 +622,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
     const pipeline = get().pipelines.find(p => p.id === id);
     if (!pipeline) return;
     try {
-      const { supabase } = await import('../lib/supabase');
       const { data: userData } = await supabase.auth.getUser();
       if (!userData?.user) throw new Error('Not authenticated');
 
@@ -660,7 +657,6 @@ export const usePipelineStore = create<PipelineState>()((set, get) => ({
   
   loadAllPipelines: async () => {
     try {
-      const { supabase } = await import('../lib/supabase');
       const { data, error } = await supabase
         .from('pipelines')
         .select('*')

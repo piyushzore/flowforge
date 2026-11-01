@@ -1,3 +1,11 @@
+/**
+ * Connector Store
+ *
+ * SECURITY NOTE: Currently connector credentials in connector_credentials table
+ * use client-accessible JSONB. For production vault hardening, secrets must be encrypted
+ * server-side via Supabase Vault or AES-256-GCM edge functions, and referenced in
+ * pipeline definitions via {{ secrets.NAME }} tokens.
+ */
 import { create } from 'zustand';
 import { connectorDefinitions } from '../data/mock-connectors';
 import type { ConnectorDefinition, ConnectorInstance } from '../types/connector';

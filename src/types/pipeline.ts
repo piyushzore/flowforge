@@ -137,6 +137,7 @@ export interface PipelineNodeData {
   
   // Preview data
   previewData?: Record<string, unknown>[];
+  fullData?: Record<string, unknown>[];
   
   // Run state
   runStatus?: 'idle' | 'queued' | 'running' | 'success' | 'failed' | 'skipped';

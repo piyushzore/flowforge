@@ -3,8 +3,7 @@ import {
   X, Upload, Database, Globe, Cloud, Bot,
   AlertCircle, CheckCircle2, RefreshCw, Layers, Check
 } from 'lucide-react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import { parseCsvText, parseExcelBuffer, inferFieldType } from '../../utils/file-parser';
 import { useUIStore } from '../../store/ui-store';
 import { usePipelineStore } from '../../store/pipeline-store';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +25,7 @@ export default function ConnectDataModal() {
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [previewRows, setPreviewRows] = useState<any[] | null>(null);
+  const [fullRows, setFullRows] = useState<any[] | null>(null);
   const [schemaFields, setSchemaFields] = useState<FieldSchema[]>([]);
   const [rowCount, setRowCount] = useState(0);
 
@@ -165,17 +165,20 @@ export default function ConnectDataModal() {
     else if (activeSourceGroup === 'saas') sourceName = `${saasPlatform} (${saasObject})`;
     else if (activeSourceGroup === 'queue') sourceName = `Topic: ${queueTopic}`;
 
+    const dataToUse = fullRows || previewRows || [
+      { key: 'sample_1', value: 'data_1' },
+      { key: 'sample_2', value: 'data_2' }
+    ];
+
     const configUpdate: any = {
       configured: true,
       connectionName: sourceName,
       sourceType: activeSourceGroup,
-      rowCount: previewRows ? rowCount : 1000,
+      rowCount: dataToUse.length,
       columnCount: schemaFields.length || 3,
       lastUpdated: 'Just now',
-      previewData: previewRows || [
-        { key: 'sample_1', value: 'data_1' },
-        { key: 'sample_2', value: 'data_2' }
-      ],
+      fullData: dataToUse,
+      previewData: dataToUse.slice(0, 100),
       outputSchema: schemaFields.map(f => ({ name: f.name, type: f.type.toLowerCase() }))
     };
 
@@ -234,24 +237,23 @@ export default function ConnectDataModal() {
         const result = event.target?.result;
         
         if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(result, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const dataRows = XLSX.utils.sheet_to_json(worksheet) as any[];
-          
-          if (dataRows.length === 0) {
+          const parsed = parseExcelBuffer(result as ArrayBuffer);
+          if (parsed.error) {
             setTesting(false);
             setTestResult('error');
-            setErrorMessage('Excel file contains no data rows.');
+            setErrorMessage(parsed.error);
             return;
           }
-          const headers = Object.keys(dataRows[0]);
-          setSchemaFields(headers.map(h => ({
-            name: h,
-            type: inferType(dataRows[0][h])
-          })));
-          setRowCount(dataRows.length);
-          setPreviewRows(dataRows);
+          if (parsed.data.length === 0) {
+            setTesting(false);
+            setTestResult('error');
+            setErrorMessage(parsed.warnings?.[0] || 'Excel file contains no data rows.');
+            return;
+          }
+          setSchemaFields(parsed.fields.map(f => ({ name: f, type: inferFieldType(parsed.data[0][f]) })));
+          setRowCount(parsed.rowCount);
+          setFullRows(parsed.data);
+          setPreviewRows(parsed.data.slice(0, 100));
           setTesting(false);
           setTestResult('success');
           return;
@@ -275,49 +277,34 @@ export default function ConnectDataModal() {
           const keys = Object.keys(jsonData[0]);
           setSchemaFields(keys.map(k => ({
             name: k,
-            type: inferType(jsonData[0][k])
+            type: inferFieldType(jsonData[0][k])
           })));
           setRowCount(jsonData.length);
-          setPreviewRows(jsonData);
+          setFullRows(jsonData);
+          setPreviewRows(jsonData.slice(0, 100));
           setTesting(false);
           setTestResult('success');
-
         } else {
-          // Parse CSV / TSV files with PapaParse
-          Papa.parse(file, {
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-              if (results.errors.length && results.data.length === 0) {
-                 setTesting(false);
-                 setTestResult('error');
-                 setErrorMessage(`CSV Error: ${results.errors[0].message}`);
-                 return;
-              }
-              const dataRows = results.data as any[];
-              if (dataRows.length === 0) {
-                setTesting(false);
-                setTestResult('error');
-                setErrorMessage('File appears empty or has no data rows.');
-                return;
-              }
-              const headers = Object.keys(dataRows[0]);
-              setSchemaFields(headers.map(h => ({
-                name: h,
-                type: inferType(dataRows[0][h])
-              })));
-              setRowCount(dataRows.length);
-              setPreviewRows(dataRows);
-              setTesting(false);
-              setTestResult('success');
-            },
-            error: (err: any) => {
-              setTesting(false);
-              setTestResult('error');
-              setErrorMessage(`Failed to parse CSV: ${err.message}`);
-            }
-          });
+          // Parse CSV / TSV with robust parseCsvText
+          const parsed = parseCsvText(text);
+          if (parsed.error) {
+            setTesting(false);
+            setTestResult('error');
+            setErrorMessage(parsed.error);
+            return;
+          }
+          if (parsed.data.length === 0) {
+            setTesting(false);
+            setTestResult('error');
+            setErrorMessage(parsed.warnings?.[0] || 'File has no data rows.');
+            return;
+          }
+          setSchemaFields(parsed.fields.map(f => ({ name: f, type: inferFieldType(parsed.data[0][f]) })));
+          setRowCount(parsed.rowCount);
+          setFullRows(parsed.data);
+          setPreviewRows(parsed.data.slice(0, 100));
+          setTesting(false);
+          setTestResult('success');
         }
       } catch (err) {
         setTesting(false);
@@ -442,15 +429,21 @@ export default function ConnectDataModal() {
 
             {activeSourceGroup === 'db' && (
               <div className="space-y-3">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    <strong>Demo Security Notice:</strong> Database credentials in this view are stored unencrypted in state. Server-side Vault encryption (AES-256-GCM) with <code>{`{{ secrets.NAME }}`}</code> resolution is in development.
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Database Type</label>
                     <select value={dbType} onChange={e => setDbType(e.target.value)} className="w-full text-xs px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-transparent text-slate-700 dark:text-slate-300">
-                      <option value="postgres">PostgreSQL</option>
-                      <option value="mysql">MySQL</option>
-                      <option value="mongodb">MongoDB</option>
-                      <option value="snowflake">Snowflake</option>
-                      <option value="bigquery">BigQuery</option>
+                      <option value="postgres">PostgreSQL (Live Preview)</option>
+                      <option value="mysql">MySQL (Live Preview)</option>
+                      <option value="mongodb">MongoDB (Coming Soon)</option>
+                      <option value="snowflake">Snowflake (Coming Soon)</option>
+                      <option value="bigquery">BigQuery (Coming Soon)</option>
                     </select>
                   </div>
                   <div>

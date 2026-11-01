@@ -55,7 +55,9 @@ export async function executePipelineCore(
 
       // ─── SOURCE NODES ──────────────────────────────────────────────
       if (category === 'source' || subType === 'webhook' || subType === 'webhook-trigger') {
-        const data = Array.isArray(node.data.previewData) ? [...node.data.previewData] : [];
+        const data = Array.isArray(node.data.fullData)
+          ? [...node.data.fullData]
+          : (Array.isArray(node.data.previewData) ? [...node.data.previewData] : []);
         results.set(nodeId, data);
         onNodeComplete?.({ nodeId, data, warnings, progress });
         continue;
@@ -131,7 +133,8 @@ export async function executePipelineCore(
 
         // Apply specific transform
         if (subType === 'filter') {
-          outputData = executeFilter(outputData, node.data.conditions || config.conditions);
+          const conditions = node.data.conditions || config.conditions || (node.data as any).filterConfig?.conditions || config.filterConfig?.conditions;
+          outputData = executeFilter(outputData, conditions);
         } else if (subType === 'sort') {
           outputData = executeSort(outputData, config);
         } else if (subType === 'rename') {

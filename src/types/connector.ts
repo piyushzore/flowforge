@@ -31,7 +31,8 @@ export interface ConnectorDefinition {
   authType: AuthType;
   authFields: AuthField[];
   supportedSyncModes: SyncMode[];
-  maturity: 'ga' | 'beta' | 'alpha' | 'community';
+  maturity: 'ga' | 'beta' | 'alpha' | 'community' | 'coming-soon';
+  disabled?: boolean;
   popular?: boolean;
   tags?: string[];
 }
