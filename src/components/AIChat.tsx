@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, X, Send, Sparkles, Loader2, Key } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Loader2, ShieldCheck } from 'lucide-react';
 import { usePipelineStore } from '../store/pipeline-store';
-import { generatePipelineWithAI, getGroqApiKey, setGroqApiKey } from '../lib/ai-service';
+import { generatePipelineWithAI } from '../lib/ai-service';
 
 interface Message {
   id: string;
@@ -34,8 +34,6 @@ export default function AIChat({ open, onClose }: AIChatProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKeyState] = useState<string>(getGroqApiKey());
-  const [showKeyInput, setShowKeyInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { activePipelineId, pipelines, setNodes, setEdges, addNode, addEdge } = usePipelineStore();
@@ -136,17 +134,12 @@ export default function AIChat({ open, onClose }: AIChatProps) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">AI Pipeline Designer</h3>
-            <p className="text-[10px] text-blue-200">Powered by Groq · Llama 3.3 70B</p>
+            <p className="text-[10px] text-blue-200 flex items-center gap-1">
+              <ShieldCheck size={11} className="text-emerald-300" /> Server-side Edge Execution
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowKeyInput(!showKeyInput)}
-            className={`p-1.5 rounded-lg transition-colors ${showKeyInput || !apiKey ? 'bg-white/30 text-amber-200' : 'hover:bg-white/20 text-white'}`}
-            title="Configure Groq API Key"
-          >
-            <Key size={14} />
-          </button>
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
@@ -155,36 +148,6 @@ export default function AIChat({ open, onClose }: AIChatProps) {
           </button>
         </div>
       </div>
-
-      {/* Groq Key Configuration Banner */}
-      {(showKeyInput || !apiKey) && (
-        <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-700 text-xs text-slate-200">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="font-semibold text-amber-400 flex items-center gap-1">
-              <Key size={12} /> Groq API Key
-            </span>
-            <span className="text-[10px] text-slate-400">Stored in browser localStorage</span>
-          </div>
-          <div className="flex gap-1.5">
-            <input
-              type="password"
-              placeholder="gsk_..."
-              value={apiKey}
-              onChange={(e) => setApiKeyState(e.target.value)}
-              className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <button
-              onClick={() => {
-                setGroqApiKey(apiKey.trim());
-                setShowKeyInput(false);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-xs font-medium"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 max-h-[400px]">

@@ -84,7 +84,37 @@ export function downloadPipelineYaml(pipeline: Pipeline): void {
 
 // ─── YAML Import ─────────────────────────────────────────────────────────────
 
-interface ParsedPipelineYaml {
+export const MAX_YAML_BYTES = 100 * 1024; // 100 KB limit
+
+const DANGEROUS_CODE_PATTERNS = [
+  { pattern: /\beval\s*\(/g, name: 'eval' },
+  { pattern: /\bFunction\s*\(/g, name: 'Function' },
+  { pattern: /\brequire\s*\(/g, name: 'require' },
+  { pattern: /\bimport\s*\(/g, name: 'import' },
+  { pattern: /\bfetch\s*\(/g, name: 'fetch' },
+  { pattern: /\bXMLHttpRequest\b/g, name: 'XMLHttpRequest' },
+  { pattern: /\bWebSocket\b/g, name: 'WebSocket' },
+  { pattern: /\bwindow\b/g, name: 'window' },
+  { pattern: /\bdocument\b/g, name: 'document' },
+  { pattern: /\blocalStorage\b/g, name: 'localStorage' },
+  { pattern: /\bsessionStorage\b/g, name: 'sessionStorage' },
+  { pattern: /\bprocess\b/g, name: 'process' },
+  { pattern: /\bglobalThis\b/g, name: 'globalThis' },
+];
+
+/**
+ * Scans and neutralizes unsafe tokens in arbitrary JS / custom-code
+ */
+export function sanitizeCustomCode(code: string): string {
+  if (!code) return '';
+  let sanitized = code;
+  for (const { pattern, name } of DANGEROUS_CODE_PATTERNS) {
+    sanitized = sanitized.replace(pattern, `/* BLOCKED: ${name} */`);
+  }
+  return sanitized;
+}
+
+export interface ParsedPipelineYaml {
   name: string;
   status?: string;
   description?: string;
@@ -98,6 +128,7 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   let currentSection: string | null = null;
   let currentItem: Record<string, unknown> | null = null;
+  let currentNestedKey: string | null = null;
   const sections: Record<string, unknown[]> = { nodes: [], edges: [] };
 
   for (const line of lines) {
@@ -113,8 +144,10 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
       if (key === 'nodes' || key === 'edges') {
         currentSection = key;
         currentItem = null;
+        currentNestedKey = null;
       } else {
         currentSection = null;
+        currentNestedKey = null;
         result[key] = val;
       }
       continue;
@@ -124,6 +157,7 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
     if (line.startsWith('  - ')) {
       const rest = trimmed.slice(2).trim();
       currentItem = {};
+      currentNestedKey = null;
       if (currentSection) {
         (sections[currentSection] = sections[currentSection] || []).push(currentItem);
       }
@@ -136,17 +170,37 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
       continue;
     }
 
-    // Property inside an item
+    // Nested sub-object property (6 spaces indent)
+    if (line.startsWith('      ') && currentItem && currentNestedKey) {
+      const colonIdx = trimmed.indexOf(':');
+      if (colonIdx > -1) {
+        const k = trimmed.slice(0, colonIdx).trim();
+        const v = trimmed.slice(colonIdx + 1).trim().replace(/^"(.*)"$/, '$1');
+        if (!currentItem[currentNestedKey]) {
+          currentItem[currentNestedKey] = {};
+        }
+        (currentItem[currentNestedKey] as Record<string, unknown>)[k] = isNaN(Number(v)) || v === '' ? v : Number(v);
+      }
+      continue;
+    }
+
+    // Property inside an item (4 spaces indent)
     if (line.startsWith('    ') && currentItem) {
       const colonIdx = trimmed.indexOf(':');
       if (colonIdx > -1) {
         const k = trimmed.slice(0, colonIdx).trim();
         const v = trimmed.slice(colonIdx + 1).trim().replace(/^"(.*)"$/, '$1');
-        if (k === 'x' || k === 'y') {
-          if (!currentItem.position) currentItem.position = {};
-          (currentItem.position as Record<string, number>)[k] = Number(v);
+        if (v === '' && (k === 'config' || k === 'conditions' || k === 'position')) {
+          currentNestedKey = k;
+          if (!currentItem[k]) currentItem[k] = {};
         } else {
-          currentItem[k] = isNaN(Number(v)) || v === '' ? v : Number(v);
+          currentNestedKey = null;
+          if (k === 'x' || k === 'y') {
+            if (!currentItem.position) currentItem.position = {};
+            (currentItem.position as Record<string, number>)[k] = Number(v);
+          } else {
+            currentItem[k] = isNaN(Number(v)) || v === '' ? v : Number(v);
+          }
         }
       }
     }
@@ -158,22 +212,42 @@ function parseSimpleYaml(text: string): Record<string, unknown> {
 }
 
 export function importPipelineFromYaml(yamlText: string): ParsedPipelineYaml {
+  if (!yamlText) {
+    throw new Error('YAML_PAYLOAD_EMPTY: Empty YAML input provided.');
+  }
+
+  // Size limit validation (100 KB)
+  const byteSize = typeof Buffer !== 'undefined' ? Buffer.byteLength(yamlText, 'utf8') : new Blob([yamlText]).size;
+  if (byteSize > MAX_YAML_BYTES) {
+    throw new Error(`YAML_PAYLOAD_TOO_LARGE: YAML document (${byteSize} bytes) exceeds 100 KB limit.`);
+  }
+
   const parsed = parseSimpleYaml(yamlText);
   const ts = Date.now();
 
-  const nodes: PipelineNode[] = ((parsed.nodes as any[]) || []).map((n: any) => ({
-    id: n.id || `imported-${ts}-${Math.random().toString(36).slice(2)}`,
-    type: 'pipeline-node',
-    position: { x: Number(n.position?.x ?? 100), y: Number(n.position?.y ?? 200) },
-    data: {
-      label: n.label || 'Imported Node',
-      category: n.category || 'transform',
-      subType: n.subType || 'filter',
-      configured: false,
-      description: n.description || '',
-      config: n.config || {},
-    },
-  }));
+  const nodes: PipelineNode[] = ((parsed.nodes as any[]) || []).map((n: any) => {
+    const rawConfig = { ...(n.config || {}) };
+    if (typeof rawConfig.code === 'string') {
+      rawConfig.code = sanitizeCustomCode(rawConfig.code);
+    }
+    if (typeof rawConfig.generatedCode === 'string') {
+      rawConfig.generatedCode = sanitizeCustomCode(rawConfig.generatedCode);
+    }
+
+    return {
+      id: n.id || `imported-${ts}-${Math.random().toString(36).slice(2)}`,
+      type: 'pipeline-node',
+      position: { x: Number(n.position?.x ?? 100), y: Number(n.position?.y ?? 200) },
+      data: {
+        label: n.label || 'Imported Node',
+        category: n.category || 'transform',
+        subType: n.subType || 'filter',
+        configured: false,
+        description: n.description || '',
+        config: rawConfig,
+      },
+    };
+  });
 
   const edges: PipelineEdge[] = ((parsed.edges as any[]) || []).map((e: any) => ({
     id: e.id || `imported-edge-${ts}-${Math.random().toString(36).slice(2)}`,

@@ -1,5 +1,5 @@
 import type { DriftIncident } from '../engine/drift-detector';
-import { getGroqApiKey } from './ai-service';
+import { supabase } from './supabase';
 
 export interface HealedSolution {
   diagnosis: string;
@@ -11,9 +11,36 @@ export interface HealedSolution {
 }
 
 /**
+ * Safely evaluates an arrow function row transform with exception handling
+ */
+export function safeApplyRowPatch(
+  patchCode: string,
+  rows: Record<string, any>[]
+): Record<string, any>[] {
+  try {
+    // Quick sanitization check against dangerous operations
+    if (/(fetch|window|document|localStorage|eval|Function|require|process)\b/.test(patchCode)) {
+      console.warn('Rejected potentially unsafe patch code:', patchCode);
+      return rows;
+    }
+
+    const fn = new Function('row', `return (${patchCode})(row)`);
+    return rows.map(r => {
+      try {
+        return fn({ ...r });
+      } catch {
+        return { ...r };
+      }
+    });
+  } catch {
+    return rows;
+  }
+}
+
+/**
  * Builds a deterministic heuristic patch without waiting for network calls
  */
-function buildHeuristicPatch(incident: DriftIncident, sampleRows: Record<string, any>[]): HealedSolution {
+export function buildHeuristicPatch(incident: DriftIncident, sampleRows: Record<string, any>[]): HealedSolution {
   const operations: string[] = [];
   const explanations: string[] = [];
 
@@ -57,14 +84,7 @@ ${operations.join('\n')}
   return cloned;
 }`;
 
-  // Execute patch function on sample rows to produce sampleAfter
-  let sampleAfter: Record<string, any>[] = [];
-  try {
-    const fn = new Function('row', `return (${patchCode})(row)`);
-    sampleAfter = sampleRows.map(r => fn(r));
-  } catch {
-    sampleAfter = sampleRows;
-  }
+  const sampleAfter = safeApplyRowPatch(patchCode, sampleRows);
 
   return {
     diagnosis: explanations.join(' ') || `Detected schema drift on ${incident.nodeName}.`,
@@ -77,88 +97,36 @@ ${operations.join('\n')}
 }
 
 /**
- * Uses Groq AI (or heuristic fallback) to synthesize an autonomous data repair patch
+ * Synthesizes an autonomous data repair patch via edge function or heuristic fallback
  */
 export async function synthesizeHealingPatch(
   incident: DriftIncident,
   sampleRows: Record<string, any>[]
 ): Promise<HealedSolution> {
   const heuristic = buildHeuristicPatch(incident, sampleRows);
-  const apiKey = getGroqApiKey();
-
-  if (!apiKey) {
-    return heuristic;
-  }
-
-  const prompt = `You are FlowForge Autonomous Data Pipeline Self-Healing Engine.
-A data pipeline node has encountered schema drift or type anomalies during execution.
-
-NODE DETAILS:
-- Node Name: "${incident.nodeName}"
-- Anomalies Detected: ${JSON.stringify(incident.anomalies, null, 2)}
-- Sample Raw Problem Rows: ${JSON.stringify(sampleRows.slice(0, 2), null, 2)}
-
-TASK:
-1. Explain the root cause in 1 concise, clear sentence.
-2. Generate a clean, resilient JavaScript arrow function of format:
-(row) => {
-  // fix and normalize fields
-  return { ...row, fixedField: ... };
-}
-It must return the healed row object, safely handle nulls/undefined, and strip currency symbols or re-map renamed fields.
-3. Return ONLY a valid JSON object matching this schema:
-{
-  "diagnosis": "string",
-  "patchCode": "string (valid JS arrow function)",
-  "confidence": number (between 0.8 and 1.0)
-}`;
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: 'You are FlowForge Autonomous Self-Healing Agent. Always reply with valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
+    const { data, error } = await supabase.functions.invoke('ai-transform', {
+      body: {
+        instruction: `Fix schema drift and anomalies: ${incident.anomalies.map(a => a.details).join('; ')}`,
+        sampleData: sampleRows.slice(0, 3)
+      }
     });
 
-    if (!response.ok) {
-      return heuristic;
+    if (!error && data && data.code) {
+      const sampleAfter = safeApplyRowPatch(data.code, sampleRows);
+      return {
+        diagnosis: data.explanation || heuristic.diagnosis,
+        patchCode: data.code,
+        confidence: 0.98,
+        patchType: 'composite',
+        sampleBefore: sampleRows,
+        sampleAfter
+      };
     }
-
-    const data = await response.json();
-    const parsed = JSON.parse(data.choices[0].message.content);
-
-    if (parsed.patchCode) {
-      // Test the generated patch code
-      try {
-        const fn = new Function('row', `return (${parsed.patchCode})(row)`);
-        const sampleAfter = sampleRows.map(r => fn(r));
-        return {
-          diagnosis: parsed.diagnosis || heuristic.diagnosis,
-          patchCode: parsed.patchCode,
-          confidence: parsed.confidence || 0.98,
-          patchType: 'composite',
-          sampleBefore: sampleRows,
-          sampleAfter
-        };
-      } catch (e) {
-        console.warn('AI patch execution dry-run failed, using heuristic fallback:', e);
-        return heuristic;
-      }
-    }
-    return heuristic;
-  } catch (error) {
-    console.warn('Groq self-healing synthesis fallback:', error);
-    return heuristic;
+  } catch {
+    // Non-blocking fallback to heuristic patch
   }
+
+  return heuristic;
 }

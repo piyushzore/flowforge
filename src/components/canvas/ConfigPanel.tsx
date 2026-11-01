@@ -23,6 +23,7 @@ import {
   Maximize2,
   ShieldAlert,
 } from 'lucide-react';
+import { downloadCsvFile } from '../../utils/csv-export';
 import SCDConfigContent from './SCDConfigPanel';
 import DataPreviewModal from './DataPreviewModal';
 import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
@@ -280,15 +281,7 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
                 <button 
                   onClick={() => {
                     if (previewDataToRender.length === 0) return;
-                    const headers = Object.keys(previewDataToRender[0]).join(',');
-                    const csvRows = previewDataToRender.map(row => Object.values(row).join(','));
-                    const csvString = [headers, ...csvRows].join('\n');
-                    const blob = new Blob([csvString], { type: 'text/csv' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${nodeData.label}-export.csv`;
-                    a.click();
+                    downloadCsvFile(`${nodeData.label}-export.csv`, previewDataToRender);
                   }}
                   className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 rounded border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors"
                 >
@@ -839,16 +832,7 @@ function ConnectionConfigContent({ nodeId, nodeData, onUpdate, fields = [] }: { 
     });
     
     if (sourceData.length === 0) return;
-    
-    const headers = Object.keys(sourceData[0]).join(',');
-    const csvRows = sourceData.map(row => Object.values(row).join(','));
-    const csvString = [headers, ...csvRows].join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${nodeData.label}-export.csv`;
-    a.click();
+    downloadCsvFile(`${nodeData.label}-export.csv`, sourceData as Record<string, unknown>[]);
   };
 
   return (
