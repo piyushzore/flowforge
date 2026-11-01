@@ -1,7 +1,7 @@
 <div align="center">
   <h1>⚡ FlowForge</h1>
-  <p><strong>The Visual All-in-One Data Engineering Platform</strong></p>
-  <p>Replaces Airflow, dbt, Fivetran, and Great Expectations with a unified, AI-powered drag-and-drop workspace.</p>
+  <p><strong>Visual Data Pipeline Studio</strong></p>
+  <p>A drag-and-drop workspace for designing, testing, and running data pipelines in React 19 and TypeScript.</p>
 
   <a href="https://flowforge-gold.vercel.app">
     <img src="https://img.shields.io/badge/Live%20Demo-flowforge--gold.vercel.app-blue?style=for-the-badge&logo=vercel" alt="Live Demo" />
@@ -9,26 +9,30 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase" alt="Supabase" />
-  <img src="https://img.shields.io/badge/Groq%20AI-Llama%203%20%26%20GPT--OSS-F55036?style=for-the-badge" alt="Groq AI" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" />
 </div>
 
 ---
 
-## 🌟 Highlights & Capabilities
+> ⚠️ **Development Status**: FlowForge is a lightweight visual data pipeline builder designed for web developers and data teams. Please refer to the **Feature Status Matrix** below for what is production-ready, what is simulated/demo, and what is currently in development.
 
-- 🩺 **Autonomous Self-Healing Pipelines**: In-flight schema and type drift detection (renamed columns, type mismatches, currency symbols) with Groq AI patch synthesis, live side-by-side visual diff review, and 0-downtime hot-patching.
-- ⚡ **Pipeline-as-an-API & Live Webhooks (`/api/trigger`)**: 1-click deploy any visual DAG into a live serverless REST endpoint running in under 5ms, with an interactive testing studio and cURL/JS/Python code generation.
-- 🤖 **AI Pipeline Designer (`⌘J`)**: Build complex multi-node visual DAGs from natural language prompts using Groq inference.
-- 🎨 **Visual Canvas**: 60+ node types across Sources, Transformations, Destinations, and Control Flow powered by `@xyflow/react`.
-- ⚡ **Complete Transform Engine**: In-browser execution for Joins, Group By + Aggregations, Null Handling, Type Casting, Window Functions, and Slowly Changing Dimensions (SCD Types 0–6).
-- 🔍 **Full Data Preview & Schema Inspector**: Full-screen data grid with cell search, column sorting, pagination, and 1-click CSV export.
-- 🧠 **AI Transform & Custom Code**: Describe transformations in plain English to generate validated JavaScript arrow functions, or write custom JavaScript and SQL.
-- 🔗 **Data Lineage**: Interactive table-level and column-level DAG visualization with upstream/downstream dependency tracing.
-- 🛡️ **Data Quality & Profiler**: Automatic null %, cardinality, min/max metrics, and 0–100 Data Quality Health Scores.
-- 📄 **GitOps YAML Export / Import**: Declarative round-trip YAML pipeline definitions ready for version control.
-- ⏱️ **SLA & Realtime Monitoring**: Live run execution streaming via Supabase Realtime with SLA breach indicators and KPI metrics.
-- 🔒 **Enterprise Secrets Manager**: Centralized, encrypted secret storage with `{{ secrets.NAME }}` template injection.
-- 🛍️ **Marketplace & Templates**: 1-click cloneable pipelines for Salesforce, Shopify, Stripe, GA4, BigQuery, and Snowflake.
+---
+
+## 📊 Feature Status Matrix
+
+| Capability | Status | Implementation Details |
+|---|---|---|
+| **Visual DAG Canvas** | ✅ **Real** | Interactive React Flow canvas (`@xyflow/react`) with drag-and-drop node placement. |
+| **Transform Engine** | ✅ **Real** | Portable, zero-DOM shared engine (`@flowforge/shared-engine`) running Joins, Aggregations, Sort, Dedup, Filter, and SCD Types 0–6 with 65+ automated tests. |
+| **Cycle Detection** | ✅ **Real** | Kahn's algorithm + DFS backtracking detects cycles before execution, highlights offending edges, and blocks run. |
+| **CSV / Excel Parsing** | ✅ **Real** | Full dataset parsing via PapaParse and XLSX; automatic header sanitization for duplicate (`col_2`) and empty (`column_1`) headers. |
+| **Webhook Execution (`/api/trigger`)** | ✅ **Real** | Serverless REST endpoint loads pipeline definition, checks SHA-256 token hash, enforces 1 MB limit, reports actual latency, and runs identical shared engine. |
+| **Database Preview (`/api/preview-db`)** | ✅ **Real (PostgreSQL / MySQL)** | Read-only connection preview with strict query parsing (SELECT-only) and SSRF protection (private IP / AWS metadata blocking). |
+| **CSV Injection Protection** | ✅ **Real** | Escapes formula cells starting with `=`, `+`, `-`, `@`, `\t`, `\r` when exporting CSV files. |
+| **YAML Export & Import** | ✅ **Real** | Round-trip YAML generation with 100 KB size limit and arbitrary code sanitization (`/* BLOCKED: ... */`). |
+| **AI Features** | 🔶 **Server-Side Edge Functions** | Routed through Supabase Edge Functions (`generate-pipeline`, `ai-transform`, `explain-error`). No API keys stored in browser client or localStorage. |
+| **Database Connectors (Snowflake, BigQuery, Kafka, Salesforce)** | 🚧 **Coming Soon** | Clearly labeled as "Coming Soon" and disabled in UI; not faking live connections. |
+| **Credentials Encryption Vault** | 🚧 **Schema Ready (Demo storage)** | Schema migration prepared in `supabase/migrations/20261101_vault_encryption.sql`; client currently notifies user with demo warning. |
 
 ---
 
@@ -36,48 +40,47 @@
 
 ```mermaid
 flowchart TD
-  subgraph CLIENT["🖥️ Frontend (React 19 + Vite 8 + React Flow)"]
+  subgraph CLIENT["🖥️ Frontend (React 19 + Vite + TypeScript)"]
     CANVAS["Visual Canvas & DAG Editor"]
-    AI_CHAT["AI Pipeline Designer (⌘J)"]
-    MONITOR["Monitoring & Realtime Logs"]
-    LINEAGE["Data Lineage & Profiler"]
+    WORKER["Web Worker (Background Engine Runner)"]
+    VALIDATOR["Pre-flight Graph & Cycle Validator"]
+    ROUTER["Code-split Routes (React.lazy + ErrorBoundary)"]
   end
 
-  subgraph AI_LAYER["🤖 AI Layer (Groq API)"]
-    GROQ["openai/gpt-oss-120b & 20b\n(< 1s ultra-low latency)"]
+  subgraph ENGINE["⚙️ Shared Core Engine (@flowforge/shared-engine)"]
+    TOPO["Kahn's TopoSort & Backtracking Cycle Detector"]
+    TRANSFORMS["Hash Joins, Aggregations, Sort, SCD 0-6"]
+    DRIFT["Schema Drift & Type Anomaly Detector"]
   end
 
-  subgraph BACKEND["⚡ Backend (Supabase)"]
+  subgraph SERVERLESS["⚡ Serverless API (Vercel)"]
+    TRIGGER["/api/trigger (Webhook Execution + 1MB Limit)"]
+    PREVIEW_DB["/api/preview-db (Read-Only DB Preview + SSRF Guard)"]
+  end
+
+  subgraph SUPABASE["🛡️ Backend (Supabase)"]
     AUTH["Supabase Auth & RBAC"]
-    DB["PostgreSQL\n(pipelines, runs, credentials, schedules)"]
-    REALTIME["Supabase Realtime\n(live execution updates)"]
+    DB["PostgreSQL with Row Level Security (RLS)"]
+    EDGE_AI["Supabase Edge Functions (Groq AI Proxy)"]
   end
 
-  subgraph CONNECTORS["🔌 35+ Supported Connectors"]
-    DBS["PostgreSQL / MySQL / Snowflake / BigQuery"]
-    SAAS["Salesforce / HubSpot / Stripe / Shopify"]
-    FILES["Google Sheets / CSV / S3 / GCS"]
-    STREAMS["Kafka / Webhooks / REST APIs"]
-  end
-
-  AI_CHAT <-->|"Direct low-latency prompts"| GROQ
-  CANVAS <-->|"Pipeline state"| DB
-  MONITOR <-->|"Live run streaming"| REALTIME
-  CANVAS -->|"Execution engine"| CONNECTORS
+  CANVAS --> VALIDATOR
+  VALIDATOR --> WORKER
+  WORKER --> ENGINE
+  TRIGGER --> ENGINE
+  CANVAS <--> DB
+  CLIENT --> EDGE_AI
 ```
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## 🔒 Security Model
 
-| Shortcut | Action |
-|---|---|
-| `⌘ + J` / `Ctrl + J` | Open AI Pipeline Designer |
-| `⌘ + Z` / `Ctrl + Z` | Undo canvas change |
-| `⌘ + Shift + Z` / `Ctrl + Y` | Redo canvas change |
-| `Backspace` / `Delete` | Remove selected node |
-| `Space + Drag` | Pan canvas |
-| `?` | Open Keyboard Shortcuts Cheat Sheet |
+1. **Zero Client Secrets**: No external third-party API keys (e.g. `VITE_GROQ_API_KEY`) exist in client code, client bundles, or browser `localStorage`.
+2. **SSRF Defense**: The database preview proxy automatically resolves DNS hostnames and verifies they do not fall within private IPv4 subnets (RFC 1918), loopback (`127.0.0.1`), or cloud metadata IPs (`169.254.169.254`).
+3. **Multi-Tenant RLS**: Row Level Security ensures complete tenant isolation between organizations across pipelines, credentials, execution runs, and logs.
+4. **Formula Injection Defense**: CSV exports prepend a single quote (`'`) to cell contents beginning with formula triggers (`=`, `+`, `-`, `@`).
+5. **Strict HTTP Headers**: Production deployments via `vercel.json` enforce Content-Security-Policy, `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff`.
 
 ---
 
@@ -86,7 +89,6 @@ flowchart TD
 ### Prerequisites
 - Node.js 20+
 - Free Supabase project ([supabase.com](https://supabase.com))
-- Free Groq API key ([console.groq.com](https://console.groq.com))
 
 ### Installation
 
@@ -102,12 +104,17 @@ npm install
 cp .env.example .env
 ```
 
-### Environment Configuration (`.env`)
+### Environment Variables (`.env`)
 
 ```env
+# Client-accessible (Supabase URL & Publishable Anon Key)
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-VITE_GROQ_API_KEY=your-groq-api-key # Optional: can also be configured in-app
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Server-only (Required for Serverless /api/trigger and Supabase Edge Functions)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+GROQ_API_KEY=your-groq-key-here
 ```
 
 ### Running Locally
@@ -116,16 +123,33 @@ VITE_GROQ_API_KEY=your-groq-api-key # Optional: can also be configured in-app
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+### Running Test Suite
+
+```bash
+npm test
+```
 
 ---
 
 ## 📜 Database Migrations
 
-Apply the migration in `supabase/migrations/20261019_credentials_and_runs.sql` to your Supabase project to enable persistent credentials, pipeline runs, and schedules with Row Level Security (RLS).
+Apply database migrations in sequence to your Supabase PostgreSQL instance:
+
+1. `supabase/migrations/20260722_rls_policies.sql` — Base organization and user row-level security.
+2. `supabase/migrations/20260722_fix_rls_circular.sql` — Security definer function resolving circular RLS dependency.
+3. `supabase/migrations/20261019_credentials_and_runs.sql` — Pipeline run history, run logs, credentials, and schedules.
+4. `supabase/migrations/20261101_vault_encryption.sql` — Server-side pgcrypto vault encryption schema and secret resolution.
+
+---
+
+## ⚠️ Known Limitations
+
+- **Complex SQL Queries**: Database previews currently support `SELECT` and `WITH ... SELECT` read queries. Multi-statement queries and procedural transactions are disallowed.
+- **Enterprise Warehouses**: Direct connections to Snowflake, Google BigQuery, and Databricks are under development and currently labeled as "Coming Soon".
+- **Real-Time Schedules**: Schedules are saved and managed via the UI; automated cron execution requires a server-side runner or external cron service trigger.
 
 ---
 
 ## 📄 License
 
-MIT License. Built with passion for data engineers.
+MIT License. See [LICENSE](LICENSE) for details.
