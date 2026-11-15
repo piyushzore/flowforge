@@ -5,6 +5,7 @@ import ConfigPanel from '../components/canvas/ConfigPanel';
 import RunControlPanel from '../components/canvas/RunControlPanel';
 import AIChat from '../components/AIChat';
 import SelfHealingModal from '../components/canvas/SelfHealingModal';
+import HealingDiffModal from '../components/canvas/HealingDiffModal';
 import WebhookApiModal from '../components/canvas/WebhookApiModal';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useUIStore } from '../store/ui-store';
@@ -16,7 +17,9 @@ import {
 } from 'lucide-react';
 import { generatePySparkCode } from '../utils/code-generator';
 import { exportPipelineToYaml, downloadPipelineYaml, importPipelineFromYaml } from '../utils/pipeline-yaml';
+import { downloadAllDbtModels } from '../utils/dbt-export';
 import type { ProcessingMode } from '../store/pipeline-store';
+import type { HealedSolution } from '../lib/ai-healer';
 
 const modeIcons: Record<ProcessingMode, React.ReactNode> = {
   batch: <Layers size={13} />,
@@ -67,6 +70,10 @@ export default function PipelineEditor() {
   const [yamlInput, setYamlInput] = React.useState('');
   const [webhookModalOpen, setWebhookModalOpen] = React.useState(false);
   const [selfHealingModalOpen, setSelfHealingModalOpen] = React.useState(false);
+  const [diffModalOpen, setDiffModalOpen] = React.useState(false);
+  const [pendingHealSolution, setPendingHealSolution] = React.useState<HealedSolution | null>(null);
+  const [healSampleBefore, setHealSampleBefore] = React.useState<Record<string, unknown>[]>([]);
+  const [healSampleAfter, setHealSampleAfter] = React.useState<Record<string, unknown>[]>([]);
 
   React.useEffect(() => {
     if (activeDriftIncident) {
@@ -248,6 +255,17 @@ export default function PipelineEditor() {
             <FileText size={14} />
             <span className="hidden lg:inline">YAML</span>
           </button>
+
+          {pipeline && (
+            <button
+              onClick={() => downloadAllDbtModels(pipeline)}
+              className="flex items-center gap-1 px-2 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0"
+              title="Export dbt SQL models"
+            >
+              <FileDown size={14} />
+              <span className="hidden lg:inline">dbt</span>
+            </button>
+          )}
 
           <button
             onClick={() => setWebhookModalOpen(true)}
@@ -692,7 +710,32 @@ export default function PipelineEditor() {
         onClose={() => setSelfHealingModalOpen(false)}
         incident={activeDriftIncident}
         pipelineId={pipeline.id}
+        onPreviewDiff={(solution, before, after) => {
+          setPendingHealSolution(solution);
+          setHealSampleBefore(before);
+          setHealSampleAfter(after);
+          setDiffModalOpen(true);
+        }}
       />
+
+      {/* Data Diff Modal — preview AI healing patch before applying */}
+      {pendingHealSolution && (
+        <HealingDiffModal
+          open={diffModalOpen}
+          onClose={() => { setDiffModalOpen(false); setPendingHealSolution(null); }}
+          onApprove={(patchCode) => {
+            if (activeDriftIncident) {
+              usePipelineStore.getState().applyHealedPatch(pipeline.id, activeDriftIncident.nodeId, patchCode);
+              usePipelineStore.getState().startTestRun(pipeline.id);
+            }
+            setDiffModalOpen(false);
+            setPendingHealSolution(null);
+          }}
+          solution={pendingHealSolution}
+          sampleBefore={healSampleBefore}
+          sampleAfter={healSampleAfter}
+        />
+      )}
 
       {/* Pipeline-as-an-API & Webhook Studio */}
       {pipeline && (

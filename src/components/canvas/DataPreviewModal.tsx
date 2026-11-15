@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { X, Search, Download, Table, ArrowUpDown, ChevronLeft, ChevronRight, Hash, Columns } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { X, Search, Download, Table, ArrowUpDown, Hash, Columns } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface DataPreviewModalProps {
   open: boolean;
@@ -8,13 +9,14 @@ interface DataPreviewModalProps {
   data: Record<string, unknown>[];
 }
 
-const PAGE_SIZE = 15;
+/** Rows ≤ this count use simple rendering; above uses virtual scrolling. */
+const VIRTUAL_THRESHOLD = 200;
+const ROW_HEIGHT = 34; // px per row
 
 export default function DataPreviewModal({ open, onClose, title, data }: DataPreviewModalProps) {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
-  const [page, setPage] = useState(1);
 
   const columns = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -51,12 +53,6 @@ export default function DataPreviewModal({ open, onClose, title, data }: DataPre
     return result;
   }, [data, search, sortCol, sortAsc]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
-  const currentPageData = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredData.slice(start, start + PAGE_SIZE);
-  }, [filteredData, page]);
-
   const handleSort = (col: string) => {
     if (sortCol === col) {
       setSortAsc(!sortAsc);
@@ -84,6 +80,8 @@ export default function DataPreviewModal({ open, onClose, title, data }: DataPre
 
   if (!open) return null;
 
+  const useVirtual = filteredData.length > VIRTUAL_THRESHOLD;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-[920px] max-w-[94vw] h-[75vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
@@ -100,7 +98,9 @@ export default function DataPreviewModal({ open, onClose, title, data }: DataPre
                   {data.length.toLocaleString()} total rows
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">Live data inspector & CSV exporter</p>
+              <p className="text-xs text-slate-400">
+                Live data inspector &amp; CSV exporter{useVirtual ? ' — virtual scrolling active' : ''}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -124,86 +124,169 @@ export default function DataPreviewModal({ open, onClose, title, data }: DataPre
               type="text"
               placeholder="Filter cell values..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span className="flex items-center gap-1"><Columns size={13} /> {columns.length} columns</span>
-            <span className="flex items-center gap-1"><Hash size={13} /> Showing {currentPageData.length} of {filteredData.length}</span>
+            <span className="flex items-center gap-1"><Hash size={13} /> {filteredData.length.toLocaleString()} rows{search ? ' (filtered)' : ''}</span>
           </div>
         </div>
 
         {/* Data Table */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {filteredData.length === 0 ? (
             <div className="py-20 text-center text-slate-400 text-sm">
               No matching records found.
             </div>
+          ) : useVirtual ? (
+            <VirtualTable columns={columns} rows={filteredData} rowHeight={ROW_HEIGHT} onSort={handleSort} sortCol={sortCol} _sortAsc={sortAsc} />
           ) : (
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="text-[11px] uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0 z-10 shadow-xs">
-                <tr>
-                  <th className="px-4 py-2.5 w-12 font-semibold text-slate-400">#</th>
-                  {columns.map(col => (
-                    <th
-                      key={col}
-                      onClick={() => handleSort(col)}
-                      className="px-4 py-2.5 font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none whitespace-nowrap"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>{col}</span>
-                        <ArrowUpDown size={11} className={`text-slate-400 ${sortCol === col ? 'text-blue-500' : ''}`} />
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {currentPageData.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors font-mono">
-                    <td className="px-4 py-2 text-slate-400 text-[10px]">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                    {columns.map(col => {
-                      const val = row[col];
-                      const isNull = val === null || val === undefined || val === '';
-                      return (
-                        <td key={col} className="px-4 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-xs truncate">
-                          {isNull ? (
-                            <span className="text-slate-300 dark:text-slate-600 italic">null</span>
-                          ) : (
-                            String(val)
-                          )}
-                        </td>
-                      );
-                    })}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="text-[11px] uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 sticky top-0 z-10 shadow-xs">
+                  <tr>
+                    <th className="px-4 py-2.5 w-12 font-semibold text-slate-400">#</th>
+                    {columns.map(col => (
+                      <th
+                        key={col}
+                        onClick={() => handleSort(col)}
+                        className="px-4 py-2.5 font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none whitespace-nowrap"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{col}</span>
+                          <ArrowUpDown size={11} className={`text-slate-400 ${sortCol === col ? 'text-blue-500' : ''}`} />
+                        </div>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredData.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors font-mono">
+                      <td className="px-4 py-2 text-slate-400 text-[10px]">{idx + 1}</td>
+                      {columns.map(col => {
+                        const val = row[col];
+                        const isNull = val === null || val === undefined || val === '';
+                        return (
+                          <td key={col} className="px-4 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-xs truncate">
+                            {isNull ? (
+                              <span className="text-slate-300 dark:text-slate-600 italic">null</span>
+                            ) : (
+                              String(val)
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
-        {/* Pagination Footer */}
+        {/* Footer */}
         <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 flex items-center justify-between shrink-0">
           <span className="text-xs text-slate-500">
-            Page {page} of {totalPages}
+            {filteredData.length.toLocaleString()} / {data.length.toLocaleString()} rows{useVirtual ? ' — virtual scroll' : ''}
           </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
+          <span className="text-xs text-slate-400">Scroll to see all data</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Virtualized table for large datasets (>200 rows). */
+function VirtualTable({
+  columns,
+  rows,
+  rowHeight,
+  onSort,
+  sortCol,
+  _sortAsc,
+}: {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowHeight: number;
+  onSort: (col: string) => void;
+  sortCol: string | null;
+  _sortAsc: boolean;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 10,
+  });
+
+  const totalHeight = rowVirtualizer.getTotalSize();
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Sticky header */}
+      <div className="overflow-x-auto shrink-0 bg-slate-100 dark:bg-slate-800">
+        <table className="w-full text-xs text-left border-collapse">
+          <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-300">
+            <tr>
+              <th className="px-4 py-2.5 w-12 font-semibold text-slate-400">#</th>
+              {columns.map(col => (
+                <th
+                  key={col}
+                  onClick={() => onSort(col)}
+                  className="px-4 py-2.5 font-semibold cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none whitespace-nowrap"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{col}</span>
+                    <ArrowUpDown size={11} className={`text-slate-400 ${sortCol === col ? 'text-blue-500' : ''}`} />
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      {/* Scrollable virtualized body */}
+      <div ref={parentRef} className="flex-1 overflow-auto">
+        <div style={{ height: `${totalHeight}px`, position: 'relative', width: '100%' }}>
+          {rowVirtualizer.getVirtualItems().map(vRow => {
+            const row = rows[vRow.index];
+            return (
+              <div
+                key={vRow.key}
+                data-index={vRow.index}
+                ref={rowVirtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${vRow.start}px)`,
+                }}
+                className="flex font-mono text-xs hover:bg-slate-50 dark:hover:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800"
+              >
+                <div className="px-4 py-2 w-12 shrink-0 text-slate-400 text-[10px]">{vRow.index + 1}</div>
+                {columns.map(col => {
+                  const val = row[col];
+                  const isNull = val === null || val === undefined || val === '';
+                  return (
+                    <div key={col} className="px-4 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-[200px] truncate shrink-0" style={{ minWidth: 120 }}>
+                      {isNull ? (
+                        <span className="text-slate-300 dark:text-slate-600 italic">null</span>
+                      ) : (
+                        String(val)
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

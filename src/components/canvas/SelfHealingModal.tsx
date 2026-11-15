@@ -13,13 +13,15 @@ interface SelfHealingModalProps {
   onClose: () => void;
   incident: DriftIncident | null;
   pipelineId: string;
+  onPreviewDiff?: (solution: HealedSolution, before: Record<string, unknown>[], after: Record<string, unknown>[]) => void;
 }
 
 export default function SelfHealingModal({
   open,
   onClose,
   incident,
-  pipelineId
+  pipelineId,
+  onPreviewDiff,
 }: SelfHealingModalProps) {
   const [solution, setSolution] = useState<HealedSolution | null>(null);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
@@ -281,9 +283,24 @@ export default function SelfHealingModal({
               className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-xl shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
             >
               <Zap size={14} className="fill-white" />
-              <span>Approve & Heal Pipeline</span>
+              <span>Approve &amp; Heal Pipeline</span>
               <ArrowRight size={14} />
             </button>
+            {onPreviewDiff && solution && (
+              <button
+                onClick={() => {
+                  const before = incident?.sampleProblemRows ?? [];
+                  const after = solution.sampleBefore ?? [];
+                  onPreviewDiff(solution, before, after);
+                  onClose();
+                }}
+                disabled={isSynthesizing || !solution}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-xl transition-colors disabled:opacity-50"
+              >
+                <Eye size={13} />
+                Preview Diff
+              </button>
+            )}
           </div>
         </div>
 

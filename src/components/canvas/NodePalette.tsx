@@ -58,6 +58,7 @@ const paletteItems: PaletteItem[] = [
   { subType: 'concat', label: 'Concatenate', category: 'transform', description: 'Combine columns', icon: <Link2 size={15} /> },
   { subType: 'date-parse', label: 'Date Parse', category: 'transform', description: 'Parse/format dates', icon: <CalendarClock size={15} /> },
   { subType: 'lookup', label: 'Lookup', category: 'transform', description: 'Enrich from reference data', icon: <SearchIcon size={15} /> },
+  { subType: 'duckdb-sql', label: 'DuckDB SQL', category: 'transform', description: 'Run DuckDB SQL in-browser (WASM)', icon: <Database size={15} /> },
   { subType: 'api-enrichment', label: 'API Enrichment', category: 'transform', description: 'Enrich via external API', icon: <Globe size={15} /> },
   { subType: 'validation', label: 'Validation', category: 'transform', description: 'Validate data quality', icon: <Shield size={15} /> },
   { subType: 'ai-transform', label: 'AI Transform', category: 'transform', description: 'Transform with plain English', icon: <Bot size={15} /> },

@@ -12,9 +12,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.110.7",
+    "@tanstack/react-virtual": "^3.14.26",
     "@xyflow/react": "^12.11.2",
     "dagre": "^0.8.5",
     "date-fns": "^4.4.0",

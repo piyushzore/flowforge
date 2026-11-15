@@ -4,7 +4,7 @@ export type NodeCategory = 'source' | 'transform' | 'destination' | 'control' | 
 
 export type SourceType = 'google-sheets' | 'postgres' | 'mysql' | 'sql-server' | 'oracle' | 'mongodb' | 'mariadb' | 'sqlite' | 'snowflake' | 'bigquery' | 'redshift' | 'databricks' | 'clickhouse' | 's3' | 'gcs' | 'azure-blob' | 'sftp' | 'csv-upload' | 'salesforce' | 'hubspot' | 'shopify' | 'stripe' | 'ga4' | 'mailchimp' | 'zendesk' | 'google-ads' | 'meta-ads' | 'quickbooks' | 'slack' | 'airtable' | 'kafka' | 'kinesis' | 'webhook' | 'rest-api' | 'graphql' | 'jdbc';
 
-export type TransformType = 'filter' | 'sort' | 'deduplicate' | 'rename' | 'change-type' | 'add-remove-fields' | 'null-handling' | 'group-by' | 'join' | 'union' | 'pivot' | 'unpivot' | 'window-function' | 'trim-case' | 'regex' | 'split-column' | 'concat' | 'date-parse' | 'lookup' | 'api-enrichment' | 'validation' | 'ai-transform' | 'custom-code' | 'quality-check' | 'scd-type-0' | 'scd-type-1' | 'scd-type-2' | 'scd-type-3' | 'scd-type-4' | 'scd-type-5' | 'scd-type-6';
+export type TransformType = 'filter' | 'sort' | 'deduplicate' | 'rename' | 'change-type' | 'add-remove-fields' | 'null-handling' | 'group-by' | 'join' | 'union' | 'pivot' | 'unpivot' | 'window-function' | 'trim-case' | 'regex' | 'split-column' | 'concat' | 'date-parse' | 'lookup' | 'api-enrichment' | 'validation' | 'ai-transform' | 'custom-code' | 'quality-check' | 'scd-type-0' | 'scd-type-1' | 'scd-type-2' | 'scd-type-3' | 'scd-type-4' | 'scd-type-5' | 'scd-type-6' | 'duckdb-sql';
 
 export type ControlType = 'conditional' | 'merge' | 'loop' | 'wait-delay';
 

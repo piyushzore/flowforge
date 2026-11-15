@@ -26,6 +26,7 @@ import {
 import { downloadCsvFile } from '../../utils/csv-export';
 import SCDConfigContent from './SCDConfigPanel';
 import DataPreviewModal from './DataPreviewModal';
+import DuckDBNodeConfig from './nodes/DuckDBNode';
 import type { PipelineNodeData, FieldSchema, FilterCondition, JoinConfig } from '../../types/pipeline';
 import { usePipelineStore } from '../../store/pipeline-store';
 
@@ -120,6 +121,19 @@ export default function ConfigPanel({ nodeId, nodeData, onUpdate, onDelete, onCl
         return <AITransformConfigContent nodeData={nodeData} onUpdate={onUpdate} fields={dynamicFields} sampleData={previewDataToRender} />;
       case 'custom-code':
         return <CustomCodeConfigContent nodeData={nodeData} onUpdate={onUpdate} />;
+      case 'duckdb-sql': {
+        const previewRows = (nodeData.previewData as Record<string, unknown>[] | undefined) ?? [];
+        const inputColumns = previewRows.length > 0 ? Object.keys(previewRows[0]) : [];
+        return (
+          <DuckDBNodeConfig
+            sql={(nodeData.sql as string | undefined) ?? ''}
+            inputTableName="input"
+            onSqlChange={(sql) => onUpdate({ sql })}
+            previewRows={previewRows}
+            inputColumns={inputColumns}
+          />
+        );
+      }
       case 'webhook':
       case 'webhook-trigger':
         return <WebhookConfigContent nodeData={nodeData} onUpdate={onUpdate} pipelineId={pipeline?.id || ''} />;
