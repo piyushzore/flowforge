@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { usePipelineStore } from '../store/pipeline-store';
 import { useConnectorStore } from '../store/connector-store';
+import { useUserStore } from '../store/user-store';
 
 interface Org {
   id: string;
@@ -71,6 +72,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      // When deployed without Supabase credentials, automatically launch demo mode
+      useUserStore.getState().loadDemoWorkspace();
+      setLoading(false);
+      return;
+    }
+
     const { loadAllPipelines, loadRuns } = usePipelineStore.getState();
     const { loadInstances } = useConnectorStore.getState();
 
@@ -110,7 +118,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    }
+    useUserStore.setState({ isDemoMode: false, currentUser: null });
   };
 
   return (

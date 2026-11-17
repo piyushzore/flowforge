@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
-import { Activity } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useUserStore } from '../../store/user-store';
+import { Activity, Sparkles } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -15,6 +16,12 @@ export default function Login() {
     setLoading(true);
     setError('');
 
+    if (!isSupabaseConfigured) {
+      setError('Supabase is not configured on this environment. Please click "Explore Demo Workspace" below.');
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -26,6 +33,11 @@ export default function Login() {
     } else {
       navigate('/dashboard');
     }
+  };
+
+  const handleEnterDemo = () => {
+    useUserStore.getState().loadDemoWorkspace();
+    navigate('/');
   };
 
   return (
@@ -46,7 +58,7 @@ export default function Login() {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 space-y-6">
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
               <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
@@ -88,6 +100,24 @@ export default function Login() {
               </button>
             </div>
           </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-400">Or preview without credentials</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleEnterDemo}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-slate-300 rounded-lg shadow-xs text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 hover:border-slate-400 transition-all"
+          >
+            <Sparkles size={16} className="text-amber-500" />
+            <span>Explore Demo Workspace</span>
+          </button>
         </div>
       </div>
     </div>

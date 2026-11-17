@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { currentUser as demoUser, workspaces as demoWorkspaces } from '../data/mock-users';
+import { mockPipelines } from '../data/mock-pipelines';
+import { usePipelineStore } from './pipeline-store';
 import type { User, Workspace, AuditEntry } from '../types/common';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,6 +31,14 @@ export const useUserStore = create<UserState>()((set, get) => ({
       activeWorkspaceId: demoWorkspaces[0]?.id || null,
       isDemoMode: true
     });
+
+    const pipelineStore = usePipelineStore.getState();
+    if (pipelineStore.pipelines.length === 0) {
+      usePipelineStore.setState({
+        pipelines: mockPipelines,
+        activePipelineId: mockPipelines[0]?.id || null,
+      });
+    }
   },
 
   setCurrentUser: (user) => {
