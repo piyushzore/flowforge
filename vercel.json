@@ -1,6 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron-trigger", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron-trigger", "schedule": "0 0 * * *" }
   ],
   "headers": [
     {
